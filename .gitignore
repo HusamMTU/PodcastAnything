@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+*.whl
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# Env files
+.env
+
+# AWS CDK
+infra/cdk.out/
+cdk.out/
+
+# OS files
+.DS_Store
+
+# Logs
+*.log
+
+# Data and artifacts
+/data/
+/experiments/
+
+# Editor settings
+.vscode/
+.idea/
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# Node
+node_modules/
+
+# Local scripts output
+*.mp3
+*.wav

@@ -1,0 +1,15 @@
+[project]
+name = "ml-publication"
+version = "0.1.0"
+description = "ML publication experiments and pipeline scaffolding."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "boto3",
+  "requests",
+  "beautifulsoup4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
