@@ -8,6 +8,8 @@ import aws_cdk as cdk
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_s3 as s3
+from aws_cdk import aws_stepfunctions as sfn
+from aws_cdk import aws_stepfunctions_tasks as sfn_tasks
 from constructs import Construct
 
 
@@ -114,7 +116,39 @@ class MLPipelineStack(cdk.Stack):
         )
         generate_audio_fn.add_to_role_policy(polly_policy)
 
+        fetch_step = sfn_tasks.LambdaInvoke(
+            self,
+            "FetchArticleStep",
+            lambda_function=fetch_article_fn,
+            payload=sfn.TaskInput.from_json_path_at("$"),
+            output_path="$.Payload",
+        )
+        rewrite_step = sfn_tasks.LambdaInvoke(
+            self,
+            "RewriteScriptStep",
+            lambda_function=rewrite_script_fn,
+            payload=sfn.TaskInput.from_json_path_at("$"),
+            output_path="$.Payload",
+        )
+        generate_step = sfn_tasks.LambdaInvoke(
+            self,
+            "GenerateAudioStep",
+            lambda_function=generate_audio_fn,
+            payload=sfn.TaskInput.from_json_path_at("$"),
+            output_path="$.Payload",
+        )
+
+        state_machine = sfn.StateMachine(
+            self,
+            "PipelineStateMachine",
+            definition_body=sfn.DefinitionBody.from_chainable(
+                fetch_step.next(rewrite_step).next(generate_step)
+            ),
+            timeout=cdk.Duration.minutes(10),
+        )
+
         cdk.CfnOutput(self, "ArtifactsBucketName", value=bucket.bucket_name)
         cdk.CfnOutput(self, "FetchArticleFnName", value=fetch_article_fn.function_name)
         cdk.CfnOutput(self, "RewriteScriptFnName", value=rewrite_script_fn.function_name)
         cdk.CfnOutput(self, "GenerateAudioFnName", value=generate_audio_fn.function_name)
+        cdk.CfnOutput(self, "PipelineStateMachineArn", value=state_machine.state_machine_arn)

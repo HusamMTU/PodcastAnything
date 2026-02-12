@@ -15,12 +15,13 @@ The implementation is AWS-backed and intentionally simple for learning.
 
 Current orchestration:
 - Local script: `scripts/run_local_pipeline.py`
-- AWS components: Lambda functions are deployed, but no Step Functions state machine yet.
+- AWS Step Functions state machine: `fetch -> rewrite -> generate`
 
 ## Repo Structure
 
 - `src/ml_publication/` Runtime package
 - `src/ml_publication/handlers/` Lambda handlers
+- `src/ml_publication/event_schema.py` Typed event schema and stage validation
 - `scripts/run_local_pipeline.py` Local runner that chains all handlers
 - `infra/` CDK app (Python) for AWS resources
 - `SYSTEM.md` System contracts and architecture notes
@@ -90,6 +91,16 @@ Artifacts are written to S3:
 - `jobs/<job_id>/script.json`
 - `jobs/<job_id>/audio.mp3`
 
+## Run The Pipeline With Step Functions
+
+Use the stack output `PipelineStateMachineArn`:
+
+```bash
+aws stepfunctions start-execution \
+  --state-machine-arn "$PIPELINE_STATE_MACHINE_ARN" \
+  --input '{"job_id":"job-001","source_url":"https://example.com/article","style":"podcast"}'
+```
+
 ## Run Tests
 
 ```bash
@@ -109,6 +120,7 @@ Stack resources:
 - S3 artifacts bucket
 - Lambda dependency layer (`requests`, `beautifulsoup4`)
 - Lambda functions: `FetchArticleFn`, `RewriteScriptFn`, `GenerateAudioFn`
+- Step Functions state machine: `PipelineStateMachine`
 - IAM policies for S3, Bedrock invoke, and Polly synthesize
 
 ## Troubleshooting
@@ -123,6 +135,8 @@ Stack resources:
   - Update `MP_BUCKET` to a globally unique name (for example include account ID + region).
 - CDK warns it cannot assume bootstrap roles but proceeds
   - This is usually non-fatal if your current credentials still have deploy permissions.
+- Step Functions execution fails because of input validation
+  - Provide `job_id` and `source_url` for the first step. The handlers now validate stage-specific event fields.
 
 ## Security Note
 

@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from ml_publication.config import load_settings
+from ml_publication.event_schema import PipelineEvent
 from ml_publication.llm import build_podcast_prompt, call_bedrock
 from ml_publication.s3 import get_text, put_json, put_text
 
@@ -13,19 +14,20 @@ logger.setLevel(logging.INFO)
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    job_id = event.get("job_id")
-    article_key = event.get("article_s3_key")
-    if not job_id or not article_key:
-        raise ValueError("event must include job_id and article_s3_key")
+    pipeline_event = PipelineEvent.from_dict(event, stage="rewrite")
+    job_id = pipeline_event.job_id
+    article_key = pipeline_event.article_s3_key
+    assert job_id is not None
+    assert article_key is not None
 
     settings = load_settings()
-    bucket = event.get("bucket", settings.bucket)
+    bucket = pipeline_event.resolved_bucket(settings.bucket)
 
     article_text = get_text(bucket, article_key)
     prompt = build_podcast_prompt(
         article_text=article_text,
-        title=event.get("title"),
-        style=event.get("style", "podcast"),
+        title=pipeline_event.title,
+        style=pipeline_event.style,
     )
 
     script_text = call_bedrock(settings.bedrock_model_id, prompt)
@@ -39,9 +41,9 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         metadata_key,
         {
             "job_id": job_id,
-            "source_url": event.get("source_url"),
-            "title": event.get("title"),
-            "style": event.get("style", "podcast"),
+            "source_url": pipeline_event.source_url,
+            "title": pipeline_event.title,
+            "style": pipeline_event.style,
             "model_id": settings.bedrock_model_id,
             "script_s3_key": script_key,
         },
@@ -49,9 +51,8 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
     logger.info("Stored podcast script", extra={"job_id": job_id, "key": script_key})
 
-    return {
-        **event,
-        "bucket": bucket,
-        "script_s3_key": script_key,
-        "script_metadata_s3_key": metadata_key,
-    }
+    return pipeline_event.with_updates(
+        bucket=bucket,
+        script_s3_key=script_key,
+        script_metadata_s3_key=metadata_key,
+    ).to_dict()

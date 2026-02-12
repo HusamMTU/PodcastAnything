@@ -4,8 +4,8 @@ Build a minimal, AWS-first pipeline that takes an article URL, rewrites it into 
 Current Scope (Implemented)
 - Input: Public article URL
 - Output: Podcast script text + MP3 audio
-- Orchestration: Local runner (`scripts/run_local_pipeline.py`) or manual Lambda invocation
-- Not implemented yet: Step Functions orchestration, DynamoDB job tracking
+- Orchestration: Local runner (`scripts/run_local_pipeline.py`) and Step Functions state machine
+- Not implemented yet: DynamoDB job tracking
 
 High-Level Flow
 1. Submit an event with `job_id` and `source_url`.
@@ -17,6 +17,7 @@ High-Level Flow
 AWS Services (Implemented)
 - S3: Store article text, script, metadata, and audio output
 - Lambda: `fetch_article`, `rewrite_script`, `generate_audio`
+- Step Functions: Orchestrates `fetch -> rewrite -> generate`
 - Bedrock Runtime: LLM inference (Anthropic and Nova request formats supported)
 - Polly: TTS audio generation
 - CloudWatch: Lambda logs
@@ -51,10 +52,12 @@ Handler Contracts
 - `fetch_article`: reads `job_id`, `source_url`; writes `article.txt`; returns `article_s3_key`
 - `rewrite_script`: reads `job_id`, `article_s3_key`; writes `script.txt` and `script.json`; returns `script_s3_key`
 - `generate_audio`: reads `job_id`, `script_s3_key`; writes `audio.mp3`; returns `audio_s3_key`
+- Event validation: shared typed schema in `src/ml_publication/event_schema.py`
 
 Infrastructure (CDK)
 - Creates one S3 artifacts bucket named from `MP_BUCKET`
 - Creates three Lambda functions and one Python dependency layer
+- Creates one Step Functions state machine: `PipelineStateMachine`
 - Grants least-required service permissions for S3 + Bedrock + Polly
 
 Assumptions
@@ -63,6 +66,5 @@ Assumptions
 - Single voice TTS in current phase
 
 Planned Next
-- Step Functions state machine for orchestration and retries
 - DynamoDB status tracking
 - Multi-speaker output and richer audio formatting
