@@ -93,7 +93,7 @@ Artifacts are written to S3:
 ## Run Tests
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+scripts/test.sh
 ```
 
 ## Deploy Infrastructure With CDK
