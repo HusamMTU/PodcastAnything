@@ -1,70 +1,81 @@
 # ML Publication Pipeline
 
-This project is a learning-focused ML engineering pipeline that takes a public Article URL, rewrites it into a podcast-style script with an LLM, and generates audio via TTS. The current scope is a simple, end-to-end batch flow using AWS services.
+Minimal ML engineering pipeline that turns a public article URL into:
+- a podcast-style script (`script.txt`)
+- an audio file (`audio.mp3`)
 
-**Current Scope**
-- Input: Public Article URL
-- Output: Podcast script (`script.txt`) + MP3 audio (`audio.mp3`)
-- Focus: Clean, minimal pipeline that is easy to understand and extend
+The implementation is AWS-backed and intentionally simple for learning.
 
-**High-Level Flow**
-1. Fetch and extract article text.
-2. Rewrite into podcast-style script (LLM).
-3. Generate audio (TTS).
-4. Store artifacts in S3.
+## What Is Implemented
 
-**AWS Services (Phase 1)**
-- S3: Store article text, script, and audio
-- Lambda: 3 handlers for fetch, rewrite, and TTS
-- Bedrock: LLM for podcast rewrite
-- Polly: TTS for audio
+1. Fetch article HTML and extract readable text.
+2. Rewrite article text into podcast-style script via Bedrock.
+3. Synthesize script into MP3 via Polly.
+4. Store artifacts in S3 under `jobs/<job_id>/`.
 
-## Project Structure
+Current orchestration:
+- Local script: `scripts/run_local_pipeline.py`
+- AWS components: Lambda functions are deployed, but no Step Functions state machine yet.
 
-- `src/ml_publication/` Core Python package
+## Repo Structure
+
+- `src/ml_publication/` Runtime package
 - `src/ml_publication/handlers/` Lambda handlers
-- `scripts/` Local runner scripts
-- `infra/` AWS CDK (Python) app for infrastructure
-- `SYSTEM.md` System spec and data contracts
+- `scripts/run_local_pipeline.py` Local runner that chains all handlers
+- `infra/` CDK app (Python) for AWS resources
+- `SYSTEM.md` System contracts and architecture notes
 
-## Key Files
+## Prerequisites
 
-- `SYSTEM.md` System spec and Phase 1 data contract
-- `scripts/run_local_pipeline.py` Local runner (calls handlers in order)
-- `src/ml_publication/article.py` Fetch + extract article text
-- `src/ml_publication/llm.py` Bedrock prompt + call (Anthropic format)
-- `src/ml_publication/tts.py` Polly TTS helper
-- `infra/ml_publication_infra/stack.py` CDK stack (S3 + Lambdas + IAM)
-
-## Setup (Local Runner or Infra Deploy)
-
-Prereqs:
 - Python 3.10+
-- AWS credentials available to the AWS CLI and boto3
+- `uv` installed
+- AWS credentials configured for CLI/boto3
 - Docker running (required for CDK layer bundling)
 - CDK CLI installed (`brew install aws-cdk` or `npm i -g aws-cdk`)
 
-Create and activate a virtual environment, then install deps:
+## Setup
+
+Create the environment and install package + dependencies:
+
 ```bash
 uv venv .venv
 source .venv/bin/activate
-uv pip install -r requirements.txt
+uv sync
+uv pip install -r infra/requirements.txt
 ```
 
-Load environment variables from `.env` into your shell:
+If you are not using `uv`, use:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -r infra/requirements.txt
+```
+
+Load `.env` into your shell:
+
 ```bash
 set -a; source .env; set +a
 ```
 
-## Run Locally
+## Required Environment Variables
 
-The local runner uses the same handlers as Lambda but runs locally. It still calls AWS services (S3, Bedrock, Polly), so your AWS credentials and env vars must be set.
+- `MP_BUCKET`: S3 bucket name for artifacts (globally unique; CDK creates this exact bucket name)
+- `BEDROCK_MODEL_ID`: Bedrock model ID (Anthropic and Nova model families supported)
+
+Optional:
+- `AWS_REGION`: defaults to `us-east-1`
+- `POLLY_VOICE_ID`: defaults to `Joanna`
+
+## Run The Pipeline Locally
 
 ```bash
 python scripts/run_local_pipeline.py "https://example.com/article"
 ```
 
 Optional flags:
+
 ```bash
 python scripts/run_local_pipeline.py "https://example.com/article" \
   --title "My Article" \
@@ -73,38 +84,47 @@ python scripts/run_local_pipeline.py "https://example.com/article" \
   --voice-id Joanna
 ```
 
-## Environment Variables
+Artifacts are written to S3:
+- `jobs/<job_id>/article.txt`
+- `jobs/<job_id>/script.txt`
+- `jobs/<job_id>/script.json`
+- `jobs/<job_id>/audio.mp3`
 
-Required:
-- `MP_BUCKET` S3 bucket name for artifacts (must be globally unique; CDK will create this bucket)
-- `BEDROCK_MODEL_ID` Bedrock model ID (Anthropic or Nova supported)
+## Run Tests
 
-Common:
-- `AWS_REGION` Defaults to `us-east-1` if not set
-- `POLLY_VOICE_ID` Defaults to `Joanna`
-
-Security note:
-- Keep `.env` out of git. Do not commit AWS credentials.
-
-## Infrastructure (CDK)
-
-The CDK app lives in `infra/` and creates:
-- An S3 bucket for artifacts
-- Three Lambda functions
-- IAM permissions for S3, Bedrock, and Polly
-
-Install CDK dependencies:
 ```bash
-uv pip install -r infra/requirements.txt
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 ```
 
-From `infra/`:
+## Deploy Infrastructure With CDK
+
 ```bash
+cd infra
 cdk bootstrap
 cdk synth
 cdk deploy
 ```
 
-Note:
-- CDK expects `BEDROCK_MODEL_ID` to be set in the environment at synth time.
-- Lambda dependencies are provided via a layer built during synth; Docker is required for bundling.
+Stack resources:
+- S3 artifacts bucket
+- Lambda dependency layer (`requests`, `beautifulsoup4`)
+- Lambda functions: `FetchArticleFn`, `RewriteScriptFn`, `GenerateAudioFn`
+- IAM policies for S3, Bedrock invoke, and Polly synthesize
+
+## Troubleshooting
+
+- `ModuleNotFoundError: No module named 'ml_publication'`
+  - Run `uv sync` (or `pip install -r requirements.txt`) in the active virtual environment.
+- `docker: Cannot connect to the Docker daemon`
+  - Start Docker Desktop before running `cdk synth` or `cdk deploy` (the Lambda layer bundling uses Docker).
+- Bedrock `AccessDeniedException` or model not available
+  - Confirm model access is enabled for your account/region and that `BEDROCK_MODEL_ID` is valid in that region.
+- S3 bucket creation fails with `BucketAlreadyExists`
+  - Update `MP_BUCKET` to a globally unique name (for example include account ID + region).
+- CDK warns it cannot assume bootstrap roles but proceeds
+  - This is usually non-fatal if your current credentials still have deploy permissions.
+
+## Security Note
+
+- Keep `.env` out of version control.
+- Do not commit long-lived AWS access keys.

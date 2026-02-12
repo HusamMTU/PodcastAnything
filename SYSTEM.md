@@ -1,76 +1,68 @@
 Goal
-Build a minimal, AWS-first pipeline that takes an Article URL, rewrites it into a podcast-style script with an LLM, and generates podcast audio with TTS.
+Build a minimal, AWS-first pipeline that takes an article URL, rewrites it into a podcast-style script with an LLM, and generates podcast audio with TTS.
 
-Scope (Phase 1)
-- Input: Public Article URL
-- Output: Podcast script (text) + MP3 audio
-- No meeting capture, no transcription
+Current Scope (Implemented)
+- Input: Public article URL
+- Output: Podcast script text + MP3 audio
+- Orchestration: Local runner (`scripts/run_local_pipeline.py`) or manual Lambda invocation
+- Not implemented yet: Step Functions orchestration, DynamoDB job tracking
 
 High-Level Flow
-1. Submit an Article URL to the pipeline.
-2. Fetch and clean the article text.
-3. Generate a podcast-style script with an LLM.
-4. Generate audio from the script via TTS.
-5. Store artifacts in S3 and metadata in DynamoDB.
+1. Submit an event with `job_id` and `source_url`.
+2. Fetch and clean article text.
+3. Rewrite article text into podcast script text with Bedrock.
+4. Generate audio from script with Polly.
+5. Store artifacts in S3 under the job prefix.
 
-AWS Services (Phase 1)
-- S3: raw article text, script, audio output
-- Lambda: fetch + clean article, LLM call, TTS call
-- Step Functions: orchestration and retries
-- Bedrock: LLM for podcast rewrite
+AWS Services (Implemented)
+- S3: Store article text, script, metadata, and audio output
+- Lambda: `fetch_article`, `rewrite_script`, `generate_audio`
+- Bedrock Runtime: LLM inference (Anthropic and Nova request formats supported)
 - Polly: TTS audio generation
-- DynamoDB: job status + metadata
-- CloudWatch: logs and metrics
+- CloudWatch: Lambda logs
 
 Data Contract (S3 Paths)
-- s3://<bucket>/jobs/<job_id>/input.json
-- s3://<bucket>/jobs/<job_id>/article.txt
-- s3://<bucket>/jobs/<job_id>/script.json
-- s3://<bucket>/jobs/<job_id>/script.txt
-- s3://<bucket>/jobs/<job_id>/audio.mp3
-- s3://<bucket>/jobs/<job_id>/status.json
+- `s3://<bucket>/jobs/<job_id>/article.txt`
+- `s3://<bucket>/jobs/<job_id>/script.txt`
+- `s3://<bucket>/jobs/<job_id>/script.json`
+- `s3://<bucket>/jobs/<job_id>/audio.mp3`
 
-Input Schema (input.json)
+Input Event Contract
 {
-  "job_id": "uuid",
+  "job_id": "uuid-or-string",
   "source_url": "https://example.com/article",
-  "title": "optional",
-  "language": "en",
+  "title": "optional title",
+  "style": "podcast",
   "voice_id": "Joanna",
-  "style": "podcast"
+  "bucket": "optional-bucket-override"
 }
 
-Script Schema (script.json)
+Script Metadata Contract (`script.json`)
 {
-  "job_id": "uuid",
-  "title": "string",
-  "summary": "string",
-  "segments": [
-    {
-      "speaker": "HOST",
-      "text": "string"
-    }
-  ],
-  "estimated_duration_sec": 420
+  "job_id": "uuid-or-string",
+  "source_url": "https://example.com/article",
+  "title": "optional title",
+  "style": "podcast",
+  "model_id": "bedrock-model-id",
+  "script_s3_key": "jobs/<job_id>/script.txt"
 }
 
-Pipeline Steps (Step Functions)
-- FetchArticle: Lambda fetches and cleans article text
-- RewriteScript: Lambda calls Bedrock to create podcast script
-- GenerateAudio: Lambda calls Polly, saves MP3
-- PersistStatus: Lambda writes status.json + DynamoDB
+Handler Contracts
+- `fetch_article`: reads `job_id`, `source_url`; writes `article.txt`; returns `article_s3_key`
+- `rewrite_script`: reads `job_id`, `article_s3_key`; writes `script.txt` and `script.json`; returns `script_s3_key`
+- `generate_audio`: reads `job_id`, `script_s3_key`; writes `audio.mp3`; returns `audio_s3_key`
+
+Infrastructure (CDK)
+- Creates one S3 artifacts bucket named from `MP_BUCKET`
+- Creates three Lambda functions and one Python dependency layer
+- Grants least-required service permissions for S3 + Bedrock + Polly
 
 Assumptions
-- Article is publicly accessible and mostly text-based
-- English content is first target
-- Single voice TTS for Phase 1
+- Article is publicly accessible and text-heavy
+- English content first
+- Single voice TTS in current phase
 
-Success Criteria (Phase 1)
-- Given a URL, produce a clean script and MP3 in S3
-- Job status tracked in DynamoDB
-- End-to-end run completes within 3-5 minutes for typical articles
-
-Future Phases
-- Add YouTube URL ingest with audio extraction and transcription
-- Add multi-speaker voices and sound design
-- Add evaluation and quality scoring for scripts
+Planned Next
+- Step Functions state machine for orchestration and retries
+- DynamoDB status tracking
+- Multi-speaker output and richer audio formatting

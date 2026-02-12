@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 import boto3
 
@@ -29,8 +28,12 @@ def _is_nova_model(model_id: str) -> bool:
     return model_id.startswith("amazon.nova") or model_id.startswith("us.amazon.nova")
 
 
+def _is_anthropic_model(model_id: str) -> bool:
+    return model_id.startswith("anthropic.") or model_id.startswith("us.anthropic.")
+
+
 def call_bedrock(model_id: str, prompt: str, max_tokens: int = 1400, temperature: float = 0.5) -> str:
-    if model_id.startswith("anthropic."):
+    if _is_anthropic_model(model_id):
         return call_bedrock_anthropic(model_id, prompt, max_tokens=max_tokens, temperature=temperature)
     if _is_nova_model(model_id):
         return call_bedrock_nova(model_id, prompt, max_tokens=max_tokens, temperature=temperature)

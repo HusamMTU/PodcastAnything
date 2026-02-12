@@ -13,10 +13,19 @@ class ArticleError(RuntimeError):
 
 
 def fetch_html(url: str, timeout_sec: int = 20) -> str:
-    resp = requests.get(url, timeout=timeout_sec, headers={"User-Agent": "ml-publication-bot"})
-    if resp.status_code >= 400:
-        raise ArticleError(f"Failed to fetch article. HTTP {resp.status_code}")
-    return resp.text
+    if not url.startswith(("http://", "https://")):
+        raise ArticleError("source_url must start with http:// or https://")
+
+    try:
+        resp = requests.get(
+            url,
+            timeout=timeout_sec,
+            headers={"User-Agent": "ml-publication-bot"},
+        )
+        resp.raise_for_status()
+        return resp.text
+    except requests.RequestException as exc:
+        raise ArticleError(f"Failed to fetch article from {url}: {exc}") from exc
 
 
 def _clean_text(lines: Iterable[str]) -> str:

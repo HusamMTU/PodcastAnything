@@ -1,3 +1,2 @@
-boto3
-requests
-beautifulsoup4
+# For non-uv workflows, install the project package and its dependencies.
+-e .
