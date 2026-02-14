@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Any, Mapping
+from typing import Any, Mapping, cast
 
 
 class EventSchemaError(ValueError):
@@ -106,6 +106,21 @@ class PipelineEvent:
                 raise EventSchemaError("event must include job_id and script_s3_key")
             return
         raise EventSchemaError(f"unsupported pipeline stage: {stage}")
+
+    def require_fetch_fields(self) -> tuple[str, str]:
+        """Return required fields for the fetch stage."""
+        self.validate_for_stage("fetch")
+        return cast(str, self.job_id), cast(str, self.source_url)
+
+    def require_rewrite_fields(self) -> tuple[str, str]:
+        """Return required fields for the rewrite stage."""
+        self.validate_for_stage("rewrite")
+        return cast(str, self.job_id), cast(str, self.article_s3_key)
+
+    def require_generate_fields(self) -> tuple[str, str]:
+        """Return required fields for the generate stage."""
+        self.validate_for_stage("generate")
+        return cast(str, self.job_id), cast(str, self.script_s3_key)
 
     def resolved_bucket(self, default_bucket: str) -> str:
         return self.bucket or default_bucket

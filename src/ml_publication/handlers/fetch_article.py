@@ -14,11 +14,8 @@ logger.setLevel(logging.INFO)
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    pipeline_event = PipelineEvent.from_dict(event, stage="fetch")
-    job_id = pipeline_event.job_id
-    source_url = pipeline_event.source_url
-    assert job_id is not None
-    assert source_url is not None
+    pipeline_event = PipelineEvent.from_dict(event)
+    job_id, source_url = pipeline_event.require_fetch_fields()
 
     settings = load_settings()
     bucket = pipeline_event.resolved_bucket(settings.bucket)

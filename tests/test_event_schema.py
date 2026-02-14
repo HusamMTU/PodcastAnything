@@ -39,6 +39,31 @@ class PipelineEventTests(unittest.TestCase):
         with self.assertRaisesRegex(EventSchemaError, "must be >= 0"):
             PipelineEvent.from_dict({"audio_estimated_duration_sec": -1})
 
+    def test_stage_require_helpers_return_required_fields(self) -> None:
+        fetch_event = PipelineEvent.from_dict(
+            {"job_id": "job-1", "source_url": "https://example.com/article"}
+        )
+        self.assertEqual(
+            ("job-1", "https://example.com/article"),
+            fetch_event.require_fetch_fields(),
+        )
+
+        rewrite_event = PipelineEvent.from_dict(
+            {"job_id": "job-2", "article_s3_key": "jobs/job-2/article.txt"}
+        )
+        self.assertEqual(
+            ("job-2", "jobs/job-2/article.txt"),
+            rewrite_event.require_rewrite_fields(),
+        )
+
+        generate_event = PipelineEvent.from_dict(
+            {"job_id": "job-3", "script_s3_key": "jobs/job-3/script.txt"}
+        )
+        self.assertEqual(
+            ("job-3", "jobs/job-3/script.txt"),
+            generate_event.require_generate_fields(),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

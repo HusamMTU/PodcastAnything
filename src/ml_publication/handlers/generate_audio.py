@@ -20,11 +20,8 @@ def _estimate_duration_sec(text: str, wpm: int = 150) -> int:
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    pipeline_event = PipelineEvent.from_dict(event, stage="generate")
-    job_id = pipeline_event.job_id
-    script_key = pipeline_event.script_s3_key
-    assert job_id is not None
-    assert script_key is not None
+    pipeline_event = PipelineEvent.from_dict(event)
+    job_id, script_key = pipeline_event.require_generate_fields()
 
     settings = load_settings()
     bucket = pipeline_event.resolved_bucket(settings.bucket)
