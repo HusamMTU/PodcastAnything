@@ -1,5 +1,9 @@
+Project
+Podcast Anything
+
 Goal
-Build a minimal, AWS-first pipeline that takes an article URL, rewrites it into a podcast-style script with an LLM, and generates podcast audio with TTS.
+Build an AWS-first system for turning inputs into podcast episodes.
+Current stage takes an article URL, rewrites it into a podcast-style script with an LLM, and generates podcast audio with TTS.
 
 Current Scope (Implemented)
 - Input: Public article URL
@@ -67,4 +71,5 @@ Assumptions
 
 Planned Next
 - DynamoDB status tracking
+- Additional source types beyond article links
 - Multi-speaker output and richer audio formatting

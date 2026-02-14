@@ -1,10 +1,11 @@
-# ML Publication Pipeline
+# Podcast Anything
 
-Minimal ML engineering pipeline that turns a public article URL into:
+This repository is for turning anything into a podcast.
+Current stage supports an article link as input and generates a single-person style podcast:
 - a podcast-style script (`script.txt`)
 - an audio file (`audio.mp3`)
 
-The implementation is AWS-backed and intentionally simple for learning.
+Later stages will support additional source types for curation and multi-speaker podcast formats.
 
 ## What Is Implemented
 
