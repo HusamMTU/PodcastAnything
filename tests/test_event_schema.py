@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import unittest
 
-from ml_publication.event_schema import EventSchemaError, PipelineEvent
+from podcast_anything.event_schema import EventSchemaError, PipelineEvent
 
 
 class PipelineEventTests(unittest.TestCase):

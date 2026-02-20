@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""CDK app entrypoint for the ML Publication pipeline."""
+"""CDK app entrypoint for Podcast Anything."""
 from __future__ import annotations
 
 import os
 
 import aws_cdk as cdk
 
-from ml_publication_infra.stack import MLPipelineStack
+from podcast_anything_infra.stack import PodcastAnythingStack
 
 
 def main() -> None:
@@ -15,9 +15,9 @@ def main() -> None:
     region = os.environ.get("AWS_REGION", "us-east-1")
     account = os.environ.get("CDK_DEFAULT_ACCOUNT")
 
-    MLPipelineStack(
+    PodcastAnythingStack(
         app,
-        "MlPublicationPipeline",
+        "PodcastAnythingStack",
         env=cdk.Environment(account=account, region=region),
     )
 

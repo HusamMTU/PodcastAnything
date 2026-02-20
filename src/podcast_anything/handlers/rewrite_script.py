@@ -4,10 +4,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ml_publication.config import load_settings
-from ml_publication.event_schema import PipelineEvent
-from ml_publication.llm import build_podcast_prompt, call_bedrock
-from ml_publication.s3 import get_text, put_json, put_text
+from podcast_anything.config import load_settings
+from podcast_anything.event_schema import PipelineEvent
+from podcast_anything.llm import build_podcast_prompt, call_bedrock
+from podcast_anything.s3 import get_text, put_json, put_text
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

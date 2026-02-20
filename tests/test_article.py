@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import requests
 
-from ml_publication.article import ArticleError, extract_text, fetch_html
+from podcast_anything.article import ArticleError, extract_text, fetch_html
 
 
 class FetchHtmlTests(unittest.TestCase):
@@ -14,7 +14,7 @@ class FetchHtmlTests(unittest.TestCase):
         with self.assertRaisesRegex(ArticleError, "source_url must start"):
             fetch_html("ftp://example.com/post")
 
-    @patch("ml_publication.article.requests.get")
+    @patch("podcast_anything.article.requests.get")
     def test_wraps_request_errors(self, mock_get: Mock) -> None:
         mock_get.side_effect = requests.RequestException("connection failed")
 

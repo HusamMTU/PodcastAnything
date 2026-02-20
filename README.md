@@ -20,9 +20,9 @@ Current orchestration:
 
 ## Repo Structure
 
-- `src/ml_publication/` Runtime package
-- `src/ml_publication/handlers/` Lambda handlers
-- `src/ml_publication/event_schema.py` Typed event schema and stage validation
+- `src/podcast_anything/` Runtime package
+- `src/podcast_anything/handlers/` Lambda handlers
+- `src/podcast_anything/event_schema.py` Typed event schema and stage validation
 - `scripts/run_local_pipeline.py` Local runner that chains all handlers
 - `scripts/start_execution.sh` Helper to start Step Functions executions
 - `infra/` CDK app (Python) for AWS resources
@@ -106,7 +106,7 @@ Recommended helper:
 scripts/start_execution.sh "https://example.com/article" "job-001" "podcast"
 ```
 
-The script at `scripts/start_execution.sh` resolves `PipelineStateMachineArn` from the `MlPublicationPipeline` stack by default.
+The script at `scripts/start_execution.sh` resolves `PipelineStateMachineArn` from the `PodcastAnythingStack` stack by default.
 
 You can still call the AWS CLI directly:
 
@@ -144,7 +144,7 @@ Stack resources:
 
 ## Troubleshooting
 
-- `ModuleNotFoundError: No module named 'ml_publication'`
+- `ModuleNotFoundError: No module named 'podcast_anything'`
   - Run `uv sync` (or `pip install -r requirements.txt`) in the active virtual environment.
 - `docker: Cannot connect to the Docker daemon`
   - Start Docker Desktop before running `cdk synth` or `cdk deploy` (the Lambda layer bundling uses Docker).

@@ -1,7 +1,7 @@
 [project]
-name = "ml-publication"
+name = "podcast-anything"
 version = "0.1.0"
-description = "ML publication experiments and pipeline scaffolding."
+description = "Turn source content into podcast-ready scripts and audio."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

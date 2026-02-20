@@ -1,4 +1,4 @@
-"""CDK stack for the ML Publication pipeline (Phase 1)."""
+"""CDK stack for Podcast Anything (Phase 1)."""
 from __future__ import annotations
 
 import os
@@ -13,7 +13,7 @@ from aws_cdk import aws_stepfunctions_tasks as sfn_tasks
 from constructs import Construct
 
 
-class MLPipelineStack(cdk.Stack):
+class PodcastAnythingStack(cdk.Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
@@ -70,7 +70,7 @@ class MLPipelineStack(cdk.Stack):
             self,
             "FetchArticleFn",
             runtime=lambda_.Runtime.PYTHON_3_11,
-            handler="ml_publication.handlers.fetch_article.handler",
+            handler="podcast_anything.handlers.fetch_article.handler",
             code=lambda_.Code.from_asset(str(src_path)),
             memory_size=512,
             timeout=cdk.Duration.seconds(30),
@@ -82,7 +82,7 @@ class MLPipelineStack(cdk.Stack):
             self,
             "RewriteScriptFn",
             runtime=lambda_.Runtime.PYTHON_3_11,
-            handler="ml_publication.handlers.rewrite_script.handler",
+            handler="podcast_anything.handlers.rewrite_script.handler",
             code=lambda_.Code.from_asset(str(src_path)),
             memory_size=512,
             timeout=cdk.Duration.seconds(60),
@@ -93,7 +93,7 @@ class MLPipelineStack(cdk.Stack):
             self,
             "GenerateAudioFn",
             runtime=lambda_.Runtime.PYTHON_3_11,
-            handler="ml_publication.handlers.generate_audio.handler",
+            handler="podcast_anything.handlers.generate_audio.handler",
             code=lambda_.Code.from_asset(str(src_path)),
             memory_size=1024,
             timeout=cdk.Duration.seconds(60),

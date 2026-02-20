@@ -4,11 +4,11 @@ from __future__ import annotations
 import unittest
 from unittest.mock import Mock, patch
 
-from ml_publication.llm import LLMError, call_bedrock
+from podcast_anything.llm import LLMError, call_bedrock
 
 
 class CallBedrockRoutingTests(unittest.TestCase):
-    @patch("ml_publication.llm.call_bedrock_anthropic", return_value="anthropic-text")
+    @patch("podcast_anything.llm.call_bedrock_anthropic", return_value="anthropic-text")
     def test_routes_anthropic_ids(self, mock_call: Mock) -> None:
         model_ids = [
             "anthropic.claude-3-haiku-20240307-v1:0",
@@ -26,7 +26,7 @@ class CallBedrockRoutingTests(unittest.TestCase):
                     temperature=0.5,
                 )
 
-    @patch("ml_publication.llm.call_bedrock_nova", return_value="nova-text")
+    @patch("podcast_anything.llm.call_bedrock_nova", return_value="nova-text")
     def test_routes_nova_ids(self, mock_call: Mock) -> None:
         model_ids = [
             "amazon.nova-lite-v1:0",

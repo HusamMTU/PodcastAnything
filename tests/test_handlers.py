@@ -4,8 +4,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import Mock, patch
 
-from ml_publication.config import Settings
-from ml_publication.handlers import fetch_article, generate_audio, rewrite_script
+from podcast_anything.config import Settings
+from podcast_anything.handlers import fetch_article, generate_audio, rewrite_script
 
 
 class FetchArticleHandlerTests(unittest.TestCase):
@@ -13,10 +13,10 @@ class FetchArticleHandlerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "job_id and source_url"):
             fetch_article.handler({}, None)
 
-    @patch("ml_publication.handlers.fetch_article.put_text")
-    @patch("ml_publication.handlers.fetch_article.article.extract_text", return_value="clean article text")
-    @patch("ml_publication.handlers.fetch_article.article.fetch_html", return_value="<html>...</html>")
-    @patch("ml_publication.handlers.fetch_article.load_settings")
+    @patch("podcast_anything.handlers.fetch_article.put_text")
+    @patch("podcast_anything.handlers.fetch_article.article.extract_text", return_value="clean article text")
+    @patch("podcast_anything.handlers.fetch_article.article.fetch_html", return_value="<html>...</html>")
+    @patch("podcast_anything.handlers.fetch_article.load_settings")
     def test_fetches_extracts_and_stores_article(
         self,
         mock_settings: Mock,
@@ -49,12 +49,12 @@ class RewriteScriptHandlerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "job_id and article_s3_key"):
             rewrite_script.handler({"job_id": "job-123"}, None)
 
-    @patch("ml_publication.handlers.rewrite_script.put_json")
-    @patch("ml_publication.handlers.rewrite_script.put_text")
-    @patch("ml_publication.handlers.rewrite_script.call_bedrock", return_value="podcast script")
-    @patch("ml_publication.handlers.rewrite_script.build_podcast_prompt", return_value="prompt text")
-    @patch("ml_publication.handlers.rewrite_script.get_text", return_value="article text")
-    @patch("ml_publication.handlers.rewrite_script.load_settings")
+    @patch("podcast_anything.handlers.rewrite_script.put_json")
+    @patch("podcast_anything.handlers.rewrite_script.put_text")
+    @patch("podcast_anything.handlers.rewrite_script.call_bedrock", return_value="podcast script")
+    @patch("podcast_anything.handlers.rewrite_script.build_podcast_prompt", return_value="prompt text")
+    @patch("podcast_anything.handlers.rewrite_script.get_text", return_value="article text")
+    @patch("podcast_anything.handlers.rewrite_script.load_settings")
     def test_reads_article_rewrites_and_stores_outputs(
         self,
         mock_settings: Mock,
@@ -108,10 +108,10 @@ class GenerateAudioHandlerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "job_id and script_s3_key"):
             generate_audio.handler({"job_id": "job-789"}, None)
 
-    @patch("ml_publication.handlers.generate_audio.put_bytes")
-    @patch("ml_publication.handlers.generate_audio.synthesize_speech", return_value=b"audio-bytes")
-    @patch("ml_publication.handlers.generate_audio.get_text", return_value="one two three four five")
-    @patch("ml_publication.handlers.generate_audio.load_settings")
+    @patch("podcast_anything.handlers.generate_audio.put_bytes")
+    @patch("podcast_anything.handlers.generate_audio.synthesize_speech", return_value=b"audio-bytes")
+    @patch("podcast_anything.handlers.generate_audio.get_text", return_value="one two three four five")
+    @patch("podcast_anything.handlers.generate_audio.load_settings")
     def test_reads_script_synthesizes_audio_and_stores_mp3(
         self,
         mock_settings: Mock,
@@ -150,10 +150,10 @@ class GenerateAudioHandlerTests(unittest.TestCase):
         self.assertEqual(expected_audio_key, result["audio_s3_key"])
         self.assertEqual(2, result["audio_estimated_duration_sec"])
 
-    @patch("ml_publication.handlers.generate_audio.put_bytes")
-    @patch("ml_publication.handlers.generate_audio.synthesize_speech", return_value=b"audio-bytes")
-    @patch("ml_publication.handlers.generate_audio.get_text", return_value="script")
-    @patch("ml_publication.handlers.generate_audio.load_settings")
+    @patch("podcast_anything.handlers.generate_audio.put_bytes")
+    @patch("podcast_anything.handlers.generate_audio.synthesize_speech", return_value=b"audio-bytes")
+    @patch("podcast_anything.handlers.generate_audio.get_text", return_value="script")
+    @patch("podcast_anything.handlers.generate_audio.load_settings")
     def test_uses_event_voice_override(
         self,
         mock_settings: Mock,

@@ -58,7 +58,7 @@ Handler Contracts
 - `rewrite_script`: reads `job_id`, `article_s3_key`; writes `script.txt` and `script.json`; returns `script_s3_key`
 - `generate_audio`: reads `job_id`, `script_s3_key`; writes `audio.mp3`; returns `audio_s3_key`
   - synthesis mode: SSML with chunking (`max_text_chars=1800`) to avoid Polly request length limits
-- Event validation: shared typed schema in `src/ml_publication/event_schema.py`
+- Event validation: shared typed schema in `src/podcast_anything/event_schema.py`
 
 Infrastructure (CDK)
 - Creates one S3 artifacts bucket named from `MP_BUCKET`

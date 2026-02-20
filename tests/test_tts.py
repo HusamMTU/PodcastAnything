@@ -5,11 +5,11 @@ from io import BytesIO
 import unittest
 from unittest.mock import Mock, patch
 
-from ml_publication.tts import TTSError, synthesize_speech
+from podcast_anything.tts import TTSError, synthesize_speech
 
 
 class SynthesizeSpeechTests(unittest.TestCase):
-    @patch("ml_publication.tts.boto3.client")
+    @patch("podcast_anything.tts.boto3.client")
     def test_short_text_makes_single_request(self, mock_boto_client: Mock) -> None:
         mock_polly = Mock()
         mock_polly.synthesize_speech.return_value = {"AudioStream": BytesIO(b"audio-1")}
@@ -21,7 +21,7 @@ class SynthesizeSpeechTests(unittest.TestCase):
         mock_polly.synthesize_speech.assert_called_once()
         self.assertEqual("text", mock_polly.synthesize_speech.call_args.kwargs["TextType"])
 
-    @patch("ml_publication.tts.boto3.client")
+    @patch("podcast_anything.tts.boto3.client")
     def test_long_text_is_split_into_multiple_requests(self, mock_boto_client: Mock) -> None:
         mock_polly = Mock()
         mock_polly.synthesize_speech.side_effect = [
@@ -40,7 +40,7 @@ class SynthesizeSpeechTests(unittest.TestCase):
             self.assertLessEqual(len(call.kwargs["Text"]), 2000)
             self.assertEqual("text", call.kwargs["TextType"])
 
-    @patch("ml_publication.tts.boto3.client")
+    @patch("podcast_anything.tts.boto3.client")
     def test_raises_when_audio_stream_missing(self, mock_boto_client: Mock) -> None:
         mock_polly = Mock()
         mock_polly.synthesize_speech.return_value = {}
@@ -53,7 +53,7 @@ class SynthesizeSpeechTests(unittest.TestCase):
         with self.assertRaisesRegex(TTSError, "empty"):
             synthesize_speech("   ", voice_id="Joanna")
 
-    @patch("ml_publication.tts.boto3.client")
+    @patch("podcast_anything.tts.boto3.client")
     def test_ssml_mode_wraps_speak_and_sets_text_type(self, mock_boto_client: Mock) -> None:
         mock_polly = Mock()
         mock_polly.synthesize_speech.return_value = {"AudioStream": BytesIO(b"audio-ssml")}

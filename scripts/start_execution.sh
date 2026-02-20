@@ -10,7 +10,7 @@ SOURCE_URL="$1"
 JOB_ID="${2:-job-$(date +%s)}"
 STYLE="${3:-podcast}"
 REGION="${AWS_REGION:-us-east-1}"
-STACK_NAME="${STACK_NAME:-MlPublicationPipeline}"
+STACK_NAME="${STACK_NAME:-PodcastAnythingStack}"
 STATE_MACHINE_ARN="${PIPELINE_STATE_MACHINE_ARN:-}"
 
 if [[ -z "$STATE_MACHINE_ARN" ]]; then

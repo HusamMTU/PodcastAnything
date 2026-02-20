@@ -10,9 +10,9 @@ import json
 import os
 import uuid
 
-from ml_publication.handlers.fetch_article import handler as fetch_article
-from ml_publication.handlers.rewrite_script import handler as rewrite_script
-from ml_publication.handlers.generate_audio import handler as generate_audio
+from podcast_anything.handlers.fetch_article import handler as fetch_article
+from podcast_anything.handlers.rewrite_script import handler as rewrite_script
+from podcast_anything.handlers.generate_audio import handler as generate_audio
 
 
 def _parse_args() -> argparse.Namespace:

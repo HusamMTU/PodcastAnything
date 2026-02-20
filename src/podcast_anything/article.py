@@ -20,7 +20,7 @@ def fetch_html(url: str, timeout_sec: int = 20) -> str:
         resp = requests.get(
             url,
             timeout=timeout_sec,
-            headers={"User-Agent": "ml-publication-bot"},
+            headers={"User-Agent": "podcast-anything-bot"},
         )
         resp.raise_for_status()
         return resp.text
