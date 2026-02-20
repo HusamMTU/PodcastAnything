@@ -8,6 +8,7 @@ dependencies = [
   "boto3",
   "requests",
   "beautifulsoup4",
+  "awscli>=1.44.43",
 ]
 
 [build-system]

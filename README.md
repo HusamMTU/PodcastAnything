@@ -94,10 +94,19 @@ Artifacts are written to S3:
 
 ## Run The Pipeline With Step Functions
 
-Use the stack output `PipelineStateMachineArn`:
+Recommended helper:
+
+```bash
+scripts/start_execution.sh "https://example.com/article" "job-001" "podcast"
+```
+
+The script resolves `PipelineStateMachineArn` from the `MlPublicationPipeline` stack by default.
+
+You can still call the AWS CLI directly:
 
 ```bash
 aws stepfunctions start-execution \
+  --region "${AWS_REGION:-us-east-1}" \
   --state-machine-arn "$PIPELINE_STATE_MACHINE_ARN" \
   --input '{"job_id":"job-001","source_url":"https://example.com/article","style":"podcast"}'
 ```
