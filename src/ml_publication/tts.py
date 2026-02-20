@@ -1,6 +1,9 @@
 """Polly TTS helper."""
 from __future__ import annotations
 
+import html
+import re
+
 import boto3
 
 
@@ -47,22 +50,44 @@ def _split_text_for_polly(text: str, max_text_chars: int) -> list[str]:
     return chunks
 
 
+def _chunk_to_ssml(text_chunk: str) -> str:
+    escaped = html.escape(text_chunk.strip(), quote=False)
+    if not escaped:
+        raise TTSError("Cannot build SSML from an empty text chunk.")
+
+    escaped = re.sub(r"\n{2,}", '<break time="700ms"/>', escaped)
+    escaped = escaped.replace("\n", '<break time="350ms"/>')
+    return (
+        "<speak>"
+        '<prosody rate="95%">'
+        f"{escaped}"
+        "</prosody>"
+        "</speak>"
+    )
+
+
 def synthesize_speech(
     text: str,
     voice_id: str,
     output_format: str = "mp3",
     max_text_chars: int = 2500,
+    text_type: str = "text",
 ) -> bytes:
+    if text_type not in {"text", "ssml"}:
+        raise TTSError("text_type must be either 'text' or 'ssml'.")
+
     chunks = _split_text_for_polly(text, max_text_chars=max_text_chars)
     client = boto3.client("polly")
     audio_parts: list[bytes] = []
 
     for index, chunk in enumerate(chunks):
+        request_text = _chunk_to_ssml(chunk) if text_type == "ssml" else chunk
         response = client.synthesize_speech(
-            Text=chunk,
+            Text=request_text,
+            TextType=text_type,
             VoiceId=voice_id,
             OutputFormat=output_format,
-            Engine="neural",
+            Engine="generative",
         )
         stream = response.get("AudioStream")
         if not stream:

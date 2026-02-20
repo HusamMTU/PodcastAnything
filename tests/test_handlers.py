@@ -134,7 +134,12 @@ class GenerateAudioHandlerTests(unittest.TestCase):
 
         expected_audio_key = "jobs/job-789/audio.mp3"
         mock_get_text.assert_called_once_with("default-bucket", "jobs/job-789/script.txt")
-        mock_synthesize.assert_called_once_with("one two three four five", voice_id="Amy")
+        mock_synthesize.assert_called_once_with(
+            "one two three four five",
+            voice_id="Amy",
+            text_type="ssml",
+            max_text_chars=1800,
+        )
         mock_put_bytes.assert_called_once_with(
             "default-bucket",
             expected_audio_key,
@@ -169,7 +174,12 @@ class GenerateAudioHandlerTests(unittest.TestCase):
         }
 
         generate_audio.handler(event, None)
-        mock_synthesize.assert_called_once_with("script", voice_id="Joanna")
+        mock_synthesize.assert_called_once_with(
+            "script",
+            voice_id="Joanna",
+            text_type="ssml",
+            max_text_chars=1800,
+        )
 
 
 if __name__ == "__main__":

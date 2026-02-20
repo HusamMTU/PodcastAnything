@@ -9,13 +9,14 @@ Current Scope (Implemented)
 - Input: Public article URL
 - Output: Podcast script text + MP3 audio
 - Orchestration: Local runner (`scripts/run_local_pipeline.py`) and Step Functions state machine
+- Execution helper script: `scripts/start_execution.sh` for starting Step Functions runs
 - Not implemented yet: DynamoDB job tracking
 
 High-Level Flow
 1. Submit an event with `job_id` and `source_url`.
 2. Fetch and clean article text.
 3. Rewrite article text into podcast script text with Bedrock.
-4. Generate audio from script with Polly.
+4. Generate audio from script with Polly (SSML + generative engine, with chunked synthesis).
 5. Store artifacts in S3 under the job prefix.
 
 AWS Services (Implemented)
@@ -23,7 +24,7 @@ AWS Services (Implemented)
 - Lambda: `fetch_article`, `rewrite_script`, `generate_audio`
 - Step Functions: Orchestrates `fetch -> rewrite -> generate`
 - Bedrock Runtime: LLM inference (Anthropic and Nova request formats supported)
-- Polly: TTS audio generation
+- Polly: TTS audio generation (`generative` engine, `ssml` text type)
 - CloudWatch: Lambda logs
 
 Data Contract (S3 Paths)
@@ -56,6 +57,7 @@ Handler Contracts
 - `fetch_article`: reads `job_id`, `source_url`; writes `article.txt`; returns `article_s3_key`
 - `rewrite_script`: reads `job_id`, `article_s3_key`; writes `script.txt` and `script.json`; returns `script_s3_key`
 - `generate_audio`: reads `job_id`, `script_s3_key`; writes `audio.mp3`; returns `audio_s3_key`
+  - synthesis mode: SSML with chunking (`max_text_chars=1800`) to avoid Polly request length limits
 - Event validation: shared typed schema in `src/ml_publication/event_schema.py`
 
 Infrastructure (CDK)

@@ -28,7 +28,12 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     voice_id = pipeline_event.voice_id or settings.polly_voice_id
 
     script_text = get_text(bucket, script_key)
-    audio = synthesize_speech(script_text, voice_id=voice_id)
+    audio = synthesize_speech(
+        script_text,
+        voice_id=voice_id,
+        text_type="ssml",
+        max_text_chars=1800,
+    )
 
     audio_key = f"jobs/{job_id}/audio.mp3"
     put_bytes(bucket, audio_key, audio, content_type="audio/mpeg")

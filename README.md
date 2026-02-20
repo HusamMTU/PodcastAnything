@@ -11,7 +11,7 @@ Later stages will support additional source types for curation and multi-speaker
 
 1. Fetch article HTML and extract readable text.
 2. Rewrite article text into podcast-style script via Bedrock.
-3. Synthesize script into MP3 via Polly.
+3. Synthesize script into MP3 via Polly using SSML + generative engine.
 4. Store artifacts in S3 under `jobs/<job_id>/`.
 
 Current orchestration:
@@ -24,6 +24,7 @@ Current orchestration:
 - `src/ml_publication/handlers/` Lambda handlers
 - `src/ml_publication/event_schema.py` Typed event schema and stage validation
 - `scripts/run_local_pipeline.py` Local runner that chains all handlers
+- `scripts/start_execution.sh` Helper to start Step Functions executions
 - `infra/` CDK app (Python) for AWS resources
 - `SYSTEM.md` System contracts and architecture notes
 
@@ -68,7 +69,7 @@ set -a; source .env; set +a
 
 Optional:
 - `AWS_REGION`: defaults to `us-east-1`
-- `POLLY_VOICE_ID`: defaults to `Joanna`
+- `POLLY_VOICE_ID`: defaults to `Joanna` (must support Polly generative engine in your region)
 
 ## Run The Pipeline Locally
 
@@ -92,6 +93,11 @@ Artifacts are written to S3:
 - `jobs/<job_id>/script.json`
 - `jobs/<job_id>/audio.mp3`
 
+Audio synthesis details:
+- Handler uses SSML mode (`TextType=ssml`) with `<prosody>` and pause tags for better pacing.
+- Polly engine is set to `generative`.
+- Long scripts are chunked automatically before synthesis and concatenated into one MP3 output.
+
 ## Run The Pipeline With Step Functions
 
 Recommended helper:
@@ -100,7 +106,7 @@ Recommended helper:
 scripts/start_execution.sh "https://example.com/article" "job-001" "podcast"
 ```
 
-The script resolves `PipelineStateMachineArn` from the `MlPublicationPipeline` stack by default.
+The script at `scripts/start_execution.sh` resolves `PipelineStateMachineArn` from the `MlPublicationPipeline` stack by default.
 
 You can still call the AWS CLI directly:
 
@@ -147,6 +153,8 @@ Stack resources:
   - This is usually non-fatal if your current credentials still have deploy permissions.
 - Step Functions execution fails because of input validation
   - Provide `job_id` and `source_url` for the first step. The handlers now validate stage-specific event fields.
+- Polly fails with `EngineNotSupportedException` or voice errors
+  - Pick a `POLLY_VOICE_ID` that supports the `generative` engine in your configured region.
 
 ## Security Note
 
