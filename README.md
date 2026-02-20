@@ -25,15 +25,14 @@ Later stages will support additional source types for curation and multi-speaker
 4. Store artifacts in S3 under `jobs/<job_id>/`.
 
 Current orchestration:
-- Local script: `scripts/run_local_pipeline.py`
 - AWS Step Functions state machine: `fetch -> rewrite -> generate`
+- Trigger helper: `scripts/start_execution.py`
 
 ## Repo Structure
 
 - `src/podcast_anything/` Runtime package
 - `src/podcast_anything/handlers/` Lambda handlers
 - `src/podcast_anything/event_schema.py` Typed event schema and stage validation
-- `scripts/run_local_pipeline.py` Local runner that chains all handlers
 - `scripts/start_execution.py` Helper script to start Step Functions executions
 - `infra/` CDK app (Python) for AWS resources
 - `SYSTEM.md` System contracts and architecture notes
@@ -80,42 +79,23 @@ Optional:
 - `AWS_REGION`: defaults to `us-east-1`
 - `POLLY_VOICE_ID`: defaults to `Joanna` (must support Polly generative engine in your region)
 
-## Run The Pipeline Locally
+## Run The Pipeline
 
-```bash
-python scripts/run_local_pipeline.py "https://example.com/article"
-```
-
-Optional flags:
-
-```bash
-python scripts/run_local_pipeline.py "https://example.com/article" \
-  --title "My Article" \
-  --style podcast \
-  --bucket my-bucket \
-  --voice-id Joanna
-```
-
-The run writes these artifacts to S3:
-- `jobs/<job_id>/article.txt`
-- `jobs/<job_id>/script.txt`
-- `jobs/<job_id>/script.json`
-- `jobs/<job_id>/audio.mp3`
-
-Audio synthesis details:
-- Handler uses SSML mode (`TextType=ssml`) with `<prosody>` and pause tags for better pacing.
-- Polly engine is set to `generative`.
-- Long scripts are chunked automatically before synthesis and concatenated into one MP3 output.
-
-## Run The Pipeline With Step Functions
-
-Recommended helper:
+Use the Step Functions helper script:
 
 ```bash
 python scripts/start_execution.py "https://example.com/article" "job-001" "podcast"
 ```
 
-The script at `scripts/start_execution.py` resolves `PipelineStateMachineArn` from the `PodcastAnythingStack` CloudFormation outputs by default.
+Optional flags:
+
+```bash
+python scripts/start_execution.py "https://example.com/article" "job-001" "podcast" \
+  --region us-east-1 \
+  --stack-name PodcastAnythingStack
+```
+
+The script at `scripts/start_execution.py` resolves `PipelineStateMachineArn` from the `PodcastAnythingStack` CloudFormation outputs by default. You can bypass lookup with `--state-machine-arn` (or `PIPELINE_STATE_MACHINE_ARN`).
 
 You can still call the AWS CLI directly:
 
@@ -125,6 +105,17 @@ aws stepfunctions start-execution \
   --state-machine-arn "$PIPELINE_STATE_MACHINE_ARN" \
   --input '{"job_id":"job-001","source_url":"https://example.com/article","style":"podcast"}'
 ```
+
+The pipeline writes these artifacts to S3:
+- `jobs/<job_id>/article.txt`
+- `jobs/<job_id>/script.txt`
+- `jobs/<job_id>/script.json`
+- `jobs/<job_id>/audio.mp3`
+
+Audio synthesis details:
+- Handler uses SSML mode (`TextType=ssml`) with `<prosody>` and pause tags for better pacing.
+- Polly engine is set to `generative`.
+- Long scripts are chunked automatically before synthesis and concatenated into one MP3 output.
 
 ## Run Tests
 

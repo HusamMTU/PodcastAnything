@@ -8,7 +8,7 @@ Current stage takes an article URL, rewrites it into a podcast-style script with
 Current Scope (Implemented)
 - Input: Public article URL
 - Output: Podcast script text + MP3 audio
-- Orchestration: Local runner (`scripts/run_local_pipeline.py`) and Step Functions state machine
+- Orchestration: Step Functions state machine
 - Execution helper script: `scripts/start_execution.py` for starting Step Functions runs
 - Not implemented yet: DynamoDB job tracking
 
