@@ -11,6 +11,12 @@ dependencies = [
   "awscli>=1.44.43",
 ]
 
+[project.optional-dependencies]
+infra = [
+  "aws-cdk-lib>=2.0.0,<3.0.0",
+  "constructs>=10.0.0,<11.0.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

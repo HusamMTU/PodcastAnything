@@ -9,7 +9,7 @@ Current Scope (Implemented)
 - Input: Public article URL
 - Output: Podcast script text + MP3 audio
 - Orchestration: Local runner (`scripts/run_local_pipeline.py`) and Step Functions state machine
-- Execution helper script: `scripts/start_execution.sh` for starting Step Functions runs
+- Execution helper script: `scripts/start_execution.py` for starting Step Functions runs
 - Not implemented yet: DynamoDB job tracking
 
 High-Level Flow

@@ -34,7 +34,7 @@ Current orchestration:
 - `src/podcast_anything/handlers/` Lambda handlers
 - `src/podcast_anything/event_schema.py` Typed event schema and stage validation
 - `scripts/run_local_pipeline.py` Local runner that chains all handlers
-- `scripts/start_execution.sh` Helper script to start Step Functions executions
+- `scripts/start_execution.py` Helper script to start Step Functions executions
 - `infra/` CDK app (Python) for AWS resources
 - `SYSTEM.md` System contracts and architecture notes
 
@@ -53,8 +53,7 @@ Create the environment and install package + dependencies:
 ```bash
 uv venv .venv
 source .venv/bin/activate
-uv sync
-uv pip install -r infra/requirements.txt
+uv sync --extra infra
 ```
 
 If you are not using `uv`, use:
@@ -113,10 +112,10 @@ Audio synthesis details:
 Recommended helper:
 
 ```bash
-scripts/start_execution.sh "https://example.com/article" "job-001" "podcast"
+python scripts/start_execution.py "https://example.com/article" "job-001" "podcast"
 ```
 
-The script at `scripts/start_execution.sh` resolves `PipelineStateMachineArn` from the `PodcastAnythingStack` CloudFormation outputs by default.
+The script at `scripts/start_execution.py` resolves `PipelineStateMachineArn` from the `PodcastAnythingStack` CloudFormation outputs by default.
 
 You can still call the AWS CLI directly:
 
