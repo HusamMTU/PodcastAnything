@@ -123,6 +123,9 @@ aws stepfunctions start-execution \
 scripts/test.sh
 ```
 
+Test catalog:
+- `tests/TESTS.md`
+
 ## Deploy Infrastructure With CDK
 
 ```bash
