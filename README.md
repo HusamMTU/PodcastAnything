@@ -1,7 +1,17 @@
 # Podcast Anything
 
-This repository is for turning anything into a podcast.
-Current stage supports an article link as input and generates a single-person style podcast:
+This repository turns source content into a podcast.
+I like learning by listening, and sometimes I want a podcast on a specific topic but cannot find one quickly.
+Think of this as podcast-as-a-service for learning.
+
+Why "anything"? Future inputs can include:
+- a meeting transcript (or multiple meetings)
+- an image of a system design drawn on a whiteboard
+- a YouTube video
+- another podcast (or two, or three)
+- and more
+
+In the current stage, the system takes an article URL and generates a single-speaker podcast:
 - a podcast-style script (`script.txt`)
 - an audio file (`audio.mp3`)
 
@@ -10,8 +20,8 @@ Later stages will support additional source types for curation and multi-speaker
 ## What Is Implemented
 
 1. Fetch article HTML and extract readable text.
-2. Rewrite article text into podcast-style script via Bedrock.
-3. Synthesize script into MP3 via Polly using SSML + generative engine.
+2. Rewrite the article text into a podcast-style script via Bedrock.
+3. Synthesize the script into MP3 via Polly (SSML + generative engine).
 4. Store artifacts in S3 under `jobs/<job_id>/`.
 
 Current orchestration:
@@ -24,7 +34,7 @@ Current orchestration:
 - `src/podcast_anything/handlers/` Lambda handlers
 - `src/podcast_anything/event_schema.py` Typed event schema and stage validation
 - `scripts/run_local_pipeline.py` Local runner that chains all handlers
-- `scripts/start_execution.sh` Helper to start Step Functions executions
+- `scripts/start_execution.sh` Helper script to start Step Functions executions
 - `infra/` CDK app (Python) for AWS resources
 - `SYSTEM.md` System contracts and architecture notes
 
@@ -56,7 +66,7 @@ pip install -r requirements.txt
 pip install -r infra/requirements.txt
 ```
 
-Load `.env` into your shell:
+Load `.env` variables into your shell:
 
 ```bash
 set -a; source .env; set +a
@@ -87,7 +97,7 @@ python scripts/run_local_pipeline.py "https://example.com/article" \
   --voice-id Joanna
 ```
 
-Artifacts are written to S3:
+The run writes these artifacts to S3:
 - `jobs/<job_id>/article.txt`
 - `jobs/<job_id>/script.txt`
 - `jobs/<job_id>/script.json`
@@ -106,7 +116,7 @@ Recommended helper:
 scripts/start_execution.sh "https://example.com/article" "job-001" "podcast"
 ```
 
-The script at `scripts/start_execution.sh` resolves `PipelineStateMachineArn` from the `PodcastAnythingStack` stack by default.
+The script at `scripts/start_execution.sh` resolves `PipelineStateMachineArn` from the `PodcastAnythingStack` CloudFormation outputs by default.
 
 You can still call the AWS CLI directly:
 
@@ -132,7 +142,7 @@ Test catalog:
 cd infra
 cdk bootstrap
 cdk synth
-cdk deploy
+cdk deploy PodcastAnythingStack
 ```
 
 Stack resources:
@@ -146,6 +156,8 @@ Stack resources:
 
 - `ModuleNotFoundError: No module named 'podcast_anything'`
   - Run `uv sync` (or `pip install -r requirements.txt`) in the active virtual environment.
+- `You must specify a region`
+  - Set `AWS_REGION` in `.env` and load it, or pass `--region us-east-1` to AWS CLI commands.
 - `docker: Cannot connect to the Docker daemon`
   - Start Docker Desktop before running `cdk synth` or `cdk deploy` (the Lambda layer bundling uses Docker).
 - Bedrock `AccessDeniedException` or model not available
