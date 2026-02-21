@@ -9,7 +9,8 @@ Current Scope (Implemented)
 - Input: Public article URL
 - Output: Podcast script text + MP3 audio
 - Orchestration: Step Functions state machine
-- Execution helper script: `scripts/start_execution.py` for starting Step Functions runs
+- Execution helper script: `scripts/start_execution.py` (API-first, direct Step Functions fallback)
+- API endpoints: `POST /executions` and `GET /executions`
 - Not implemented yet: DynamoDB job tracking
 
 High-Level Flow
@@ -23,9 +24,14 @@ AWS Services (Implemented)
 - S3: Store article text, script, metadata, and audio output
 - Lambda: `fetch_article`, `rewrite_script`, `generate_audio`
 - Step Functions: Orchestrates `fetch -> rewrite -> generate`
+- API Gateway (HTTP API): exposes execution start and status routes
 - Bedrock Runtime: LLM inference (Anthropic and Nova request formats supported)
 - Polly: TTS audio generation (`generative` engine, `ssml` text type)
 - CloudWatch: Lambda logs
+
+API Layer
+- `src/podcast_anything/api/service.py`: shared start/status operations over Step Functions
+- `src/podcast_anything/api/handlers.py`: API Gateway-compatible Lambda proxy handlers
 
 Data Contract (S3 Paths)
 - `s3://<bucket>/jobs/<job_id>/article.txt`
@@ -63,7 +69,11 @@ Handler Contracts
 Infrastructure (CDK)
 - Creates one S3 artifacts bucket named from `MP_BUCKET`
 - Creates three Lambda functions and one Python dependency layer
+- Creates two API Lambda functions (`StartExecutionApiFn`, `GetExecutionApiFn`)
 - Creates one Step Functions state machine: `PipelineStateMachine`
+- Creates one HTTP API with routes:
+  - `POST /executions`
+  - `GET /executions`
 - Grants least-required service permissions for S3 + Bedrock + Polly
 
 Assumptions

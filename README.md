@@ -32,9 +32,11 @@ Current orchestration:
 
 - `src/podcast_anything/` Runtime package
 - `src/podcast_anything/handlers/` Lambda handlers
+- `src/podcast_anything/api/` API service + API Gateway Lambda handlers
 - `src/podcast_anything/event_schema.py` Typed event schema and stage validation
 - `scripts/start_execution.py` Helper script to start Step Functions executions
 - `infra/` CDK app (Python) for AWS resources
+- `infra/INFRA.md` Infra resource breakdown and architecture sketch
 - `SYSTEM.md` System contracts and architecture notes
 
 ## Prerequisites
@@ -81,7 +83,10 @@ Optional:
 
 ## Run The Pipeline
 
-Use the Step Functions helper script:
+Before starting executions, make sure the AWS infrastructure is already deployed (`PodcastAnythingStack`), including the Step Functions state machine and S3 bucket.
+If it is not deployed yet, run the steps in `Deploy Infrastructure With CDK` first.
+
+Use the helper script (API mode by default):
 
 ```bash
 python scripts/start_execution.py "https://example.com/article" "job-001" "podcast"
@@ -95,7 +100,15 @@ python scripts/start_execution.py "https://example.com/article" "job-001" "podca
   --stack-name PodcastAnythingStack
 ```
 
-The script at `scripts/start_execution.py` resolves `PipelineStateMachineArn` from the `PodcastAnythingStack` CloudFormation outputs by default. You can bypass lookup with `--state-machine-arn` (or `PIPELINE_STATE_MACHINE_ARN`).
+In default mode, the script resolves `HttpApiUrl` from `PodcastAnythingStack` outputs and calls `POST /executions`.
+
+Direct Step Functions mode is still available:
+
+```bash
+python scripts/start_execution.py "https://example.com/article" "job-001" "podcast" \
+  --mode direct \
+  --state-machine-arn "$PIPELINE_STATE_MACHINE_ARN"
+```
 
 You can still call the AWS CLI directly:
 
@@ -116,6 +129,40 @@ Audio synthesis details:
 - Handler uses SSML mode (`TextType=ssml`) with `<prosody>` and pause tags for better pacing.
 - Polly engine is set to `generative`.
 - Long scripts are chunked automatically before synthesis and concatenated into one MP3 output.
+
+## API Endpoints
+
+The CDK stack now deploys an HTTP API with these routes:
+
+- `POST /executions`
+  - Starts a new Step Functions execution.
+  - Request JSON: `{"source_url":"...","job_id":"optional","style":"podcast"}`
+  - Optional: `state_machine_arn` in body or query string.
+- `GET /executions?execution_arn=...`
+  - Returns Step Functions execution status and parsed input/output when available.
+
+Get API URL from stack outputs:
+
+```bash
+aws cloudformation describe-stacks \
+  --stack-name PodcastAnythingStack \
+  --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue | [0]" \
+  --output text
+```
+
+Example calls:
+
+```bash
+API_URL="https://<your-api-id>.execute-api.us-east-1.amazonaws.com"
+
+curl -sS -X POST "$API_URL/executions" \
+  -H "content-type: application/json" \
+  -d '{"source_url":"https://en.wikipedia.org/wiki/Vision_transformer","style":"podcast"}'
+```
+
+```bash
+curl -sS "$API_URL/executions?execution_arn=<execution-arn>"
+```
 
 ## Run Tests
 
@@ -139,7 +186,11 @@ Stack resources:
 - S3 artifacts bucket
 - Lambda dependency layer (`requests`, `beautifulsoup4`)
 - Lambda functions: `FetchArticleFn`, `RewriteScriptFn`, `GenerateAudioFn`
+- API Lambda functions: `StartExecutionApiFn`, `GetExecutionApiFn`
 - Step Functions state machine: `PipelineStateMachine`
+- HTTP API Gateway routes:
+  - `POST /executions`
+  - `GET /executions`
 - IAM policies for S3, Bedrock invoke, and Polly synthesize
 
 ## Troubleshooting

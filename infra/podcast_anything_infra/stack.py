@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 
 import aws_cdk as cdk
+from aws_cdk import aws_apigatewayv2 as apigwv2
+from aws_cdk import aws_apigatewayv2_integrations as apigwv2_integrations
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_s3 as s3
@@ -147,8 +149,68 @@ class PodcastAnythingStack(cdk.Stack):
             timeout=cdk.Duration.minutes(10),
         )
 
+        start_execution_api_fn = lambda_.Function(
+            self,
+            "StartExecutionApiFn",
+            runtime=lambda_.Runtime.PYTHON_3_11,
+            handler="podcast_anything.api.handlers.start_execution_handler",
+            code=lambda_.Code.from_asset(str(src_path)),
+            memory_size=256,
+            timeout=cdk.Duration.seconds(30),
+            environment={
+                "PIPELINE_STATE_MACHINE_ARN": state_machine.state_machine_arn,
+                "STACK_NAME": self.stack_name,
+            },
+        )
+
+        get_execution_api_fn = lambda_.Function(
+            self,
+            "GetExecutionApiFn",
+            runtime=lambda_.Runtime.PYTHON_3_11,
+            handler="podcast_anything.api.handlers.get_execution_handler",
+            code=lambda_.Code.from_asset(str(src_path)),
+            memory_size=256,
+            timeout=cdk.Duration.seconds(30),
+        )
+
+        state_machine.grant_start_execution(start_execution_api_fn)
+        get_execution_api_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["states:DescribeExecution"],
+                resources=["*"],
+            )
+        )
+
+        http_api = apigwv2.HttpApi(
+            self,
+            "PodcastAnythingHttpApi",
+            api_name="PodcastAnythingApi",
+            create_default_stage=True,
+        )
+
+        http_api.add_routes(
+            path="/executions",
+            methods=[apigwv2.HttpMethod.POST],
+            integration=apigwv2_integrations.HttpLambdaIntegration(
+                "StartExecutionApiIntegration",
+                handler=start_execution_api_fn,
+            ),
+        )
+
+        http_api.add_routes(
+            path="/executions",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=apigwv2_integrations.HttpLambdaIntegration(
+                "GetExecutionApiIntegration",
+                handler=get_execution_api_fn,
+            ),
+        )
+
         cdk.CfnOutput(self, "ArtifactsBucketName", value=bucket.bucket_name)
         cdk.CfnOutput(self, "FetchArticleFnName", value=fetch_article_fn.function_name)
         cdk.CfnOutput(self, "RewriteScriptFnName", value=rewrite_script_fn.function_name)
         cdk.CfnOutput(self, "GenerateAudioFnName", value=generate_audio_fn.function_name)
         cdk.CfnOutput(self, "PipelineStateMachineArn", value=state_machine.state_machine_arn)
+        cdk.CfnOutput(self, "StartExecutionApiFnName", value=start_execution_api_fn.function_name)
+        cdk.CfnOutput(self, "GetExecutionApiFnName", value=get_execution_api_fn.function_name)
+        cdk.CfnOutput(self, "HttpApiUrl", value=http_api.api_endpoint)

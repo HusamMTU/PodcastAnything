@@ -47,3 +47,13 @@ scripts/test.sh
 - `test_raises_when_text_is_empty`: rejects empty/whitespace text input.
 - `test_ssml_mode_wraps_speak_and_sets_text_type`: SSML mode wraps content with SSML tags and sets `TextType=ssml`.
 - `test_rejects_invalid_text_type`: rejects unsupported `text_type` values.
+
+## `tests/test_api.py`
+
+- `test_start_pipeline_execution_uses_explicit_state_machine_arn`: starts Step Functions execution with a provided ARN.
+- `test_start_pipeline_execution_resolves_state_machine_arn_from_stack`: resolves ARN from CloudFormation outputs before starting execution.
+- `test_resolve_state_machine_arn_raises_when_output_missing`: fails fast when `PipelineStateMachineArn` output is absent.
+- `test_start_execution_handler_rejects_invalid_json`: returns `400` for malformed JSON request bodies.
+- `test_start_execution_handler_returns_accepted`: returns `202` and delegates execution start to service layer.
+- `test_get_execution_handler_requires_execution_arn`: returns `400` when execution identifier is missing.
+- `test_get_execution_handler_returns_status`: returns `200` with execution status payload from service layer.
