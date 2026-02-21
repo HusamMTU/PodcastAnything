@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import json
 import os
-import time
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 import boto3
@@ -63,6 +63,12 @@ def _try_parse_json(raw: str | None) -> Any:
         return raw
 
 
+def _generate_job_id() -> str:
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    short_suffix = uuid.uuid4().hex[:8]
+    return f"job-{timestamp}-{short_suffix}"
+
+
 def resolve_state_machine_arn(*, cloudformation: Any, stack_name: str) -> str:
     try:
         response = cloudformation.describe_stacks(StackName=stack_name)
@@ -109,7 +115,7 @@ def start_pipeline_execution(
         else _default_state_machine_arn()
     )
 
-    resolved_job_id = cleaned_job_id or f"job-{int(time.time())}"
+    resolved_job_id = cleaned_job_id or _generate_job_id()
     payload = {
         "job_id": resolved_job_id,
         "source_url": cleaned_source_url,

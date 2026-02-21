@@ -89,7 +89,7 @@ If it is not deployed yet, run the steps in `Deploy Infrastructure With CDK` fir
 Use the helper script (API mode by default):
 
 ```bash
-python scripts/start_execution.py "https://example.com/article" "job-001" "podcast"
+python scripts/start_execution.py "https://example.com/article"
 ```
 
 Optional flags:
@@ -99,6 +99,8 @@ python scripts/start_execution.py "https://example.com/article" "job-001" "podca
   --region us-east-1 \
   --stack-name PodcastAnythingStack
 ```
+
+If `job_id` is omitted, the system generates a unique timestamp-based ID automatically.
 
 In default mode, the script resolves `HttpApiUrl` from `PodcastAnythingStack` outputs and calls `POST /executions`.
 

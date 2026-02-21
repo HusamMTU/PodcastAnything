@@ -80,6 +80,34 @@ class ApiServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "PipelineStateMachineArn"):
             resolve_state_machine_arn(cloudformation=cloudformation, stack_name="PodcastAnythingStack")
 
+    @patch("podcast_anything.api.service._generate_job_id", return_value="job-20260221T120000000000Z-abcdef12")
+    @patch("podcast_anything.api.service.boto3.session.Session")
+    def test_start_pipeline_execution_generates_job_id_when_missing(
+        self,
+        mock_session_cls: Mock,
+        mock_generate_job_id: Mock,
+    ) -> None:
+        mock_session = Mock()
+        mock_sf = Mock()
+        mock_sf.start_execution.return_value = {
+            "executionArn": "arn:aws:states:us-east-1:123:execution:sm:exec-2",
+            "startDate": datetime(2026, 2, 21, tzinfo=timezone.utc),
+        }
+        mock_session.client.return_value = mock_sf
+        mock_session_cls.return_value = mock_session
+
+        result = start_pipeline_execution(
+            source_url="https://example.com/article",
+            state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
+            region="us-east-1",
+        )
+
+        mock_generate_job_id.assert_called_once()
+        start_kwargs = mock_sf.start_execution.call_args.kwargs
+        payload = json.loads(start_kwargs["input"])
+        self.assertEqual("job-20260221T120000000000Z-abcdef12", payload["job_id"])
+        self.assertEqual("job-20260221T120000000000Z-abcdef12", result["job_id"])
+
 
 class ApiHandlerTests(unittest.TestCase):
     def test_start_execution_handler_rejects_invalid_json(self) -> None:
@@ -124,4 +152,3 @@ class ApiHandlerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
