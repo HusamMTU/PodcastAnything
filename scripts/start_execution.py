@@ -23,8 +23,11 @@ def _parse_args() -> argparse.Namespace:
         description="Start a Podcast Anything pipeline execution."
     )
     parser.add_argument("source_url", help="Source URL to process (article or YouTube)")
-    parser.add_argument("job_id", nargs="?", default=None, help="Optional job id")
-    parser.add_argument("style", nargs="?", default="podcast", help="Podcast style label")
+    parser.add_argument(
+        "--style",
+        default="podcast",
+        help="Podcast style label (default: podcast)",
+    )
     parser.add_argument(
         "--transcript-file",
         default=None,
@@ -144,7 +147,7 @@ def main() -> None:
             response = _post_execution(
                 api_url=api_url,
                 source_url=args.source_url,
-                job_id=args.job_id,
+                job_id=None,
                 style=args.style,
                 source_text=source_text,
             )
@@ -152,7 +155,7 @@ def main() -> None:
             response = start_pipeline_execution(
                 source_url=args.source_url,
                 source_text=source_text,
-                job_id=args.job_id,
+                job_id=None,
                 style=args.style,
                 region=args.region,
                 stack_name=args.stack_name,

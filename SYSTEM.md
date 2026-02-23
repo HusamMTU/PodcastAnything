@@ -15,7 +15,7 @@ Current Scope (Implemented)
 - Not implemented yet: DynamoDB job tracking
 
 High-Level Flow
-1. Submit an event with `source_url` (optional `job_id`; generated automatically when omitted).
+1. Submit an event with `source_url`; the service generates `job_id` automatically.
 2. Fetch and clean source text (article body or YouTube transcript).
 3. Rewrite source text into podcast script text with Bedrock.
 4. Generate audio from script with Polly (SSML + generative engine, with chunked synthesis).

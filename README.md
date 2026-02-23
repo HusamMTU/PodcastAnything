@@ -102,16 +102,17 @@ YouTube example (transcript fetched in AWS):
 python scripts/start_execution.py "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
-Optional `job_id` and `style`:
+Optional flags:
 
 ```bash
-python scripts/start_execution.py "https://example.com/article" "job-001" "podcast" \
+python scripts/start_execution.py "https://example.com/article" \
+  --style podcast \
   --region us-east-1 \
   --stack-name PodcastAnythingStack
 ```
 
 Notes:
-- If `job_id` is omitted, the system generates a unique timestamp-based ID automatically.
+- `job_id` is generated automatically by the service.
 - In default mode, the script resolves `HttpApiUrl` from `PodcastAnythingStack` outputs.
 - Direct Step Functions mode is available with `--mode direct`.
 
@@ -142,8 +143,9 @@ You can also use `yt-dlp` locally if it works better in your environment, then p
 Direct Step Functions mode (optional):
 
 ```bash
-python scripts/start_execution.py "https://example.com/article" "job-001" "podcast" \
+python scripts/start_execution.py "https://example.com/article" \
   --mode direct \
+  --style podcast \
   --state-machine-arn "$PIPELINE_STATE_MACHINE_ARN"
 ```
 
@@ -177,7 +179,6 @@ The CDK stack now deploys an HTTP API with these routes:
   - Starts a Step Functions execution
   - Body fields:
     - `source_url` (required): public article URL or YouTube video URL
-    - `job_id` (optional)
     - `style` (optional, default `podcast`)
     - `source_text` or `transcript_text` (optional fallback when YouTube fetch is blocked)
     - `state_machine_arn` (optional override)
@@ -266,7 +267,7 @@ Stack resources:
 - CDK warns it cannot assume bootstrap roles but proceeds
   - This is usually non-fatal if your current credentials still have deploy permissions.
 - Step Functions execution fails because of input validation
-  - Provide `source_url` for API start requests (and `job_id` only if overriding the auto-generated value).
+  - Provide `source_url` for API start requests.
 - Polly fails with `EngineNotSupportedException` or voice errors
   - Pick a `POLLY_VOICE_ID` that supports the `generative` engine in your configured region.
 
