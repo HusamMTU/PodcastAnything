@@ -1,4 +1,5 @@
 """Unit tests for Lambda handlers."""
+
 from __future__ import annotations
 
 import unittest
@@ -15,8 +16,14 @@ class FetchArticleHandlerTests(unittest.TestCase):
 
     @patch("podcast_anything.handlers.fetch_article.put_text")
     @patch("podcast_anything.handlers.fetch_article.youtube.is_youtube_url", return_value=False)
-    @patch("podcast_anything.handlers.fetch_article.article.extract_text", return_value="clean article text")
-    @patch("podcast_anything.handlers.fetch_article.article.fetch_html", return_value="<html>...</html>")
+    @patch(
+        "podcast_anything.handlers.fetch_article.article.extract_text",
+        return_value="clean article text",
+    )
+    @patch(
+        "podcast_anything.handlers.fetch_article.article.fetch_html",
+        return_value="<html>...</html>",
+    )
     @patch("podcast_anything.handlers.fetch_article.load_settings")
     def test_fetches_extracts_and_stores_article(
         self,
@@ -47,7 +54,10 @@ class FetchArticleHandlerTests(unittest.TestCase):
         self.assertEqual(len("clean article text"), result["article_char_count"])
 
     @patch("podcast_anything.handlers.fetch_article.put_text")
-    @patch("podcast_anything.handlers.fetch_article.youtube.fetch_transcript_text", return_value="transcript text")
+    @patch(
+        "podcast_anything.handlers.fetch_article.youtube.fetch_transcript_text",
+        return_value="transcript text",
+    )
     @patch("podcast_anything.handlers.fetch_article.youtube.is_youtube_url", return_value=True)
     @patch("podcast_anything.handlers.fetch_article.load_settings")
     def test_fetches_youtube_transcript_and_stores_text(
@@ -120,7 +130,9 @@ class RewriteScriptHandlerTests(unittest.TestCase):
     @patch("podcast_anything.handlers.rewrite_script.put_json")
     @patch("podcast_anything.handlers.rewrite_script.put_text")
     @patch("podcast_anything.handlers.rewrite_script.call_bedrock", return_value="podcast script")
-    @patch("podcast_anything.handlers.rewrite_script.build_podcast_prompt", return_value="prompt text")
+    @patch(
+        "podcast_anything.handlers.rewrite_script.build_podcast_prompt", return_value="prompt text"
+    )
     @patch("podcast_anything.handlers.rewrite_script.get_text", return_value="article text")
     @patch("podcast_anything.handlers.rewrite_script.load_settings")
     def test_reads_article_rewrites_and_stores_outputs(
@@ -180,8 +192,12 @@ class GenerateAudioHandlerTests(unittest.TestCase):
             generate_audio.handler({"job_id": "job-789"}, None)
 
     @patch("podcast_anything.handlers.generate_audio.put_bytes")
-    @patch("podcast_anything.handlers.generate_audio.synthesize_speech", return_value=b"audio-bytes")
-    @patch("podcast_anything.handlers.generate_audio.get_text", return_value="one two three four five")
+    @patch(
+        "podcast_anything.handlers.generate_audio.synthesize_speech", return_value=b"audio-bytes"
+    )
+    @patch(
+        "podcast_anything.handlers.generate_audio.get_text", return_value="one two three four five"
+    )
     @patch("podcast_anything.handlers.generate_audio.load_settings")
     def test_reads_script_synthesizes_audio_and_stores_mp3(
         self,
@@ -222,7 +238,9 @@ class GenerateAudioHandlerTests(unittest.TestCase):
         self.assertEqual(2, result["audio_estimated_duration_sec"])
 
     @patch("podcast_anything.handlers.generate_audio.put_bytes")
-    @patch("podcast_anything.handlers.generate_audio.synthesize_speech", return_value=b"audio-bytes")
+    @patch(
+        "podcast_anything.handlers.generate_audio.synthesize_speech", return_value=b"audio-bytes"
+    )
     @patch("podcast_anything.handlers.generate_audio.get_text", return_value="script")
     @patch("podcast_anything.handlers.generate_audio.load_settings")
     def test_uses_event_voice_override(

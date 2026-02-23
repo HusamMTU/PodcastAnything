@@ -1,10 +1,20 @@
 """Lambda handlers for API-style operations."""
+
 from __future__ import annotations
 
 from typing import Any
 
-from podcast_anything.api.http import HttpRequestError, json_response, parse_json_body, read_query_param
-from podcast_anything.api.service import PipelineApiError, get_execution_status, start_pipeline_execution
+from podcast_anything.api.http import (
+    HttpRequestError,
+    json_response,
+    parse_json_body,
+    read_query_param,
+)
+from podcast_anything.api.service import (
+    PipelineApiError,
+    get_execution_status,
+    start_pipeline_execution,
+)
 
 
 def _error_response(exc: Exception) -> dict[str, Any]:

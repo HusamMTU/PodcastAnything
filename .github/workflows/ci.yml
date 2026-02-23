@@ -46,6 +46,9 @@ jobs:
       - name: Run tests
         run: scripts/test.sh
 
+      - name: Run Ruff (lint)
+        run: uv run --frozen --extra dev ruff check .
+
       - name: CDK synth
         working-directory: infra
         run: cdk synth PodcastAnythingStack --no-notices

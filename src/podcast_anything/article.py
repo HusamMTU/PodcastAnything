@@ -1,4 +1,5 @@
 """Fetch and extract readable article text."""
+
 from __future__ import annotations
 
 import re

@@ -1,4 +1,5 @@
 """Small S3 helper utilities."""
+
 from __future__ import annotations
 
 import json

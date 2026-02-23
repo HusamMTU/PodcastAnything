@@ -4,6 +4,7 @@
 Default mode calls the deployed HTTP API (`POST /executions`).
 Optional direct mode calls Step Functions directly.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,9 +20,7 @@ from podcast_anything.api.service import PipelineApiError, start_pipeline_execut
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Start a Podcast Anything pipeline execution."
-    )
+    parser = argparse.ArgumentParser(description="Start a Podcast Anything pipeline execution.")
     parser.add_argument("source_url", help="Source URL to process (article or YouTube)")
     parser.add_argument(
         "--style",

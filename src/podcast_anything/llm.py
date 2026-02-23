@@ -1,4 +1,5 @@
 """Bedrock LLM helpers for multiple model families."""
+
 from __future__ import annotations
 
 import json
@@ -39,9 +40,13 @@ def _is_anthropic_model(model_id: str) -> bool:
     return model_id.startswith("anthropic.") or model_id.startswith("us.anthropic.")
 
 
-def call_bedrock(model_id: str, prompt: str, max_tokens: int = 1400, temperature: float = 0.5) -> str:
+def call_bedrock(
+    model_id: str, prompt: str, max_tokens: int = 1400, temperature: float = 0.5
+) -> str:
     if _is_anthropic_model(model_id):
-        return call_bedrock_anthropic(model_id, prompt, max_tokens=max_tokens, temperature=temperature)
+        return call_bedrock_anthropic(
+            model_id, prompt, max_tokens=max_tokens, temperature=temperature
+        )
     if _is_nova_model(model_id):
         return call_bedrock_nova(model_id, prompt, max_tokens=max_tokens, temperature=temperature)
     raise LLMError(f"Unsupported Bedrock model_id: {model_id}")
@@ -59,9 +64,7 @@ def call_bedrock_anthropic(
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": max_tokens,
         "temperature": temperature,
-        "messages": [
-            {"role": "user", "content": [{"type": "text", "text": prompt}]}
-        ],
+        "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
     }
 
     response = client.invoke_model(
@@ -91,9 +94,7 @@ def call_bedrock_nova(
     client = boto3.client("bedrock-runtime")
 
     body = {
-        "messages": [
-            {"role": "user", "content": [{"text": prompt}]}
-        ],
+        "messages": [{"role": "user", "content": [{"text": prompt}]}],
         "inferenceConfig": {
             "maxTokens": max_tokens,
             "temperature": temperature,
@@ -108,11 +109,7 @@ def call_bedrock_nova(
     )
 
     payload = json.loads(response["body"].read())
-    content_list = (
-        payload.get("output", {})
-        .get("message", {})
-        .get("content", [])
-    )
+    content_list = payload.get("output", {}).get("message", {}).get("content", [])
     text_block = next((item for item in content_list if "text" in item), None)
     if not text_block:
         raise LLMError("Nova response missing text.")

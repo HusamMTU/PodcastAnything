@@ -1,4 +1,5 @@
 """YouTube transcript helpers."""
+
 from __future__ import annotations
 
 import re
@@ -47,7 +48,7 @@ def extract_video_id(url: str) -> str:
 
         for prefix in ("/shorts/", "/embed/", "/live/"):
             if parsed.path.startswith(prefix):
-                tail = parsed.path[len(prefix):]
+                tail = parsed.path[len(prefix) :]
                 video_id = tail.split("/")[0]
                 if video_id:
                     return video_id
@@ -94,7 +95,8 @@ def _fetch_segments_with_library(video_id: str) -> object:
         from youtube_transcript_api import YouTubeTranscriptApi  # type: ignore
     except Exception as exc:  # pragma: no cover - exercised in runtime setup, not unit tests
         raise YouTubeTranscriptError(
-            "youtube-transcript-api is not installed. Install project dependencies and redeploy the fetch layer."
+            "youtube-transcript-api is not installed. "
+            "Install project dependencies and redeploy the fetch layer."
         ) from exc
 
     # Support both common library APIs across versions.
@@ -126,7 +128,8 @@ def fetch_transcript_text(url: str) -> str:
         ):
             raise YouTubeTranscriptError(
                 "YouTube transcript fetch is blocked from this AWS/Lambda network. "
-                "Provide the transcript text directly (API field `transcript_text` / `source_text`) "
+                "Provide the transcript text directly "
+                "(API field `transcript_text` / `source_text`) "
                 "or use `scripts/start_execution.py --transcript-file ...`."
             ) from exc
         raise YouTubeTranscriptError(f"Failed to fetch YouTube transcript: {exc}") from exc

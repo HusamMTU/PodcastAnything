@@ -1,8 +1,9 @@
 """Runtime configuration for Lambda handlers and local runs."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 
 
 class ConfigError(RuntimeError):
@@ -29,11 +30,7 @@ def load_settings() -> Settings:
     if not bucket:
         raise ConfigError("Missing required environment variable: MP_BUCKET")
 
-    region = (
-        os.environ.get("AWS_REGION")
-        or os.environ.get("AWS_DEFAULT_REGION")
-        or "us-east-1"
-    )
+    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
 
     bedrock_model_id = _require_env("BEDROCK_MODEL_ID")
     polly_voice_id = os.environ.get("POLLY_VOICE_ID", "Joanna")

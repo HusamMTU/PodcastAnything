@@ -1,4 +1,5 @@
 """CDK stack for Podcast Anything (Phase 1)."""
+
 from __future__ import annotations
 
 import os

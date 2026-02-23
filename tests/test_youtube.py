@@ -1,4 +1,5 @@
 """Unit tests for YouTube transcript URL parsing helpers."""
+
 from __future__ import annotations
 
 import unittest

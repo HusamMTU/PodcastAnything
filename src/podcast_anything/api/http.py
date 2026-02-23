@@ -1,4 +1,5 @@
 """Utilities for API Gateway Lambda proxy handlers."""
+
 from __future__ import annotations
 
 import base64
@@ -55,4 +56,3 @@ def read_query_param(event: dict[str, Any], name: str) -> str | None:
         raise HttpRequestError(f"query parameter '{name}' must be a string")
     cleaned = value.strip()
     return cleaned or None
-

@@ -1,4 +1,5 @@
 """Service layer for starting and inspecting pipeline executions."""
+
 from __future__ import annotations
 
 import json
@@ -16,11 +17,7 @@ class PipelineApiError(RuntimeError):
 
 
 def _default_region() -> str:
-    return (
-        os.environ.get("AWS_REGION")
-        or os.environ.get("AWS_DEFAULT_REGION")
-        or "us-east-1"
-    )
+    return os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
 
 
 def _default_stack_name() -> str:
@@ -86,9 +83,7 @@ def resolve_state_machine_arn(*, cloudformation: Any, stack_name: str) -> str:
             if arn:
                 return arn
 
-    raise PipelineApiError(
-        f"could not resolve PipelineStateMachineArn from stack '{stack_name}'"
-    )
+    raise PipelineApiError(f"could not resolve PipelineStateMachineArn from stack '{stack_name}'")
 
 
 def start_pipeline_execution(
@@ -103,13 +98,13 @@ def start_pipeline_execution(
 ) -> dict[str, Any]:
     cleaned_source_url = _require_non_empty(source_url, "source_url")
     cleaned_source_text = (
-        source_text.strip()
-        if isinstance(source_text, str) and source_text.strip()
-        else None
+        source_text.strip() if isinstance(source_text, str) and source_text.strip() else None
     )
     cleaned_job_id = job_id.strip() if isinstance(job_id, str) and job_id.strip() else None
     cleaned_style = style.strip() if isinstance(style, str) and style.strip() else "podcast"
-    cleaned_region = region.strip() if isinstance(region, str) and region.strip() else _default_region()
+    cleaned_region = (
+        region.strip() if isinstance(region, str) and region.strip() else _default_region()
+    )
     cleaned_stack_name = (
         stack_name.strip()
         if isinstance(stack_name, str) and stack_name.strip()
@@ -164,7 +159,9 @@ def get_execution_status(
     region: str | None = None,
 ) -> dict[str, Any]:
     cleaned_execution_arn = _require_non_empty(execution_arn, "execution_arn")
-    cleaned_region = region.strip() if isinstance(region, str) and region.strip() else _default_region()
+    cleaned_region = (
+        region.strip() if isinstance(region, str) and region.strip() else _default_region()
+    )
 
     try:
         session = boto3.session.Session(region_name=cleaned_region)

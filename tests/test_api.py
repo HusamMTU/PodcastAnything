@@ -1,4 +1,5 @@
 """Unit tests for API service and API handlers."""
+
 from __future__ import annotations
 
 import json
@@ -12,7 +13,9 @@ from podcast_anything.api.service import resolve_state_machine_arn, start_pipeli
 
 class ApiServiceTests(unittest.TestCase):
     @patch("podcast_anything.api.service.boto3.session.Session")
-    def test_start_pipeline_execution_uses_explicit_state_machine_arn(self, mock_session_cls: Mock) -> None:
+    def test_start_pipeline_execution_uses_explicit_state_machine_arn(
+        self, mock_session_cls: Mock
+    ) -> None:
         mock_session = Mock()
         mock_sf = Mock()
         mock_sf.start_execution.return_value = {
@@ -33,10 +36,14 @@ class ApiServiceTests(unittest.TestCase):
         mock_session.client.assert_called_once_with("stepfunctions")
         mock_sf.start_execution.assert_called_once()
         self.assertEqual("job-1", result["job_id"])
-        self.assertEqual("arn:aws:states:us-east-1:123:stateMachine:sm", result["state_machine_arn"])
+        self.assertEqual(
+            "arn:aws:states:us-east-1:123:stateMachine:sm", result["state_machine_arn"]
+        )
 
     @patch("podcast_anything.api.service.boto3.session.Session")
-    def test_start_pipeline_execution_includes_source_text_when_provided(self, mock_session_cls: Mock) -> None:
+    def test_start_pipeline_execution_includes_source_text_when_provided(
+        self, mock_session_cls: Mock
+    ) -> None:
         mock_session = Mock()
         mock_sf = Mock()
         mock_sf.start_execution.return_value = {
@@ -57,7 +64,9 @@ class ApiServiceTests(unittest.TestCase):
         self.assertEqual("provided transcript", payload["source_text"])
 
     @patch("podcast_anything.api.service.boto3.session.Session")
-    def test_start_pipeline_execution_resolves_state_machine_arn_from_stack(self, mock_session_cls: Mock) -> None:
+    def test_start_pipeline_execution_resolves_state_machine_arn_from_stack(
+        self, mock_session_cls: Mock
+    ) -> None:
         mock_session = Mock()
         mock_cf = Mock()
         mock_cf.describe_stacks.return_value = {
@@ -99,9 +108,14 @@ class ApiServiceTests(unittest.TestCase):
         cloudformation.describe_stacks.return_value = {"Stacks": [{"Outputs": []}]}
 
         with self.assertRaisesRegex(Exception, "PipelineStateMachineArn"):
-            resolve_state_machine_arn(cloudformation=cloudformation, stack_name="PodcastAnythingStack")
+            resolve_state_machine_arn(
+                cloudformation=cloudformation, stack_name="PodcastAnythingStack"
+            )
 
-    @patch("podcast_anything.api.service._generate_job_id", return_value="job-20260221T120000000000Z-abcdef12")
+    @patch(
+        "podcast_anything.api.service._generate_job_id",
+        return_value="job-20260221T120000000000Z-abcdef12",
+    )
     @patch("podcast_anything.api.service.boto3.session.Session")
     def test_start_pipeline_execution_generates_job_id_when_missing(
         self,

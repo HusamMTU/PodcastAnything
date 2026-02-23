@@ -1,4 +1,5 @@
 """Lambda handler: synthesize podcast audio from script text."""
+
 from __future__ import annotations
 
 import logging

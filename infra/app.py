@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """CDK app entrypoint for Podcast Anything."""
+
 from __future__ import annotations
 
 import os
 
 import aws_cdk as cdk
-
 from podcast_anything_infra.stack import PodcastAnythingStack
 
 

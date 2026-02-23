@@ -1,4 +1,5 @@
 """Event schema helpers for pipeline handlers and orchestration."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
@@ -81,7 +82,9 @@ class PipelineEvent:
             voice_id=_read_optional_string(payload.get("voice_id"), "voice_id"),
             bucket=_read_optional_string(payload.get("bucket"), "bucket"),
             article_s3_key=_read_optional_string(payload.get("article_s3_key"), "article_s3_key"),
-            article_char_count=_read_optional_int(payload.get("article_char_count"), "article_char_count"),
+            article_char_count=_read_optional_int(
+                payload.get("article_char_count"), "article_char_count"
+            ),
             script_s3_key=_read_optional_string(payload.get("script_s3_key"), "script_s3_key"),
             script_metadata_s3_key=_read_optional_string(
                 payload.get("script_metadata_s3_key"),

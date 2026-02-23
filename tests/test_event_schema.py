@@ -1,4 +1,5 @@
 """Unit tests for pipeline event schema validation."""
+
 from __future__ import annotations
 
 import unittest

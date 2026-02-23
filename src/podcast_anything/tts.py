@@ -1,4 +1,5 @@
 """Polly TTS helper."""
+
 from __future__ import annotations
 
 import html
@@ -57,13 +58,7 @@ def _chunk_to_ssml(text_chunk: str) -> str:
 
     escaped = re.sub(r"\n{2,}", '<break time="700ms"/>', escaped)
     escaped = escaped.replace("\n", '<break time="350ms"/>')
-    return (
-        "<speak>"
-        '<prosody rate="95%">'
-        f"{escaped}"
-        "</prosody>"
-        "</speak>"
-    )
+    return f'<speak><prosody rate="95%">{escaped}</prosody></speak>'
 
 
 def synthesize_speech(

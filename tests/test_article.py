@@ -1,4 +1,5 @@
 """Unit tests for article fetching and extraction."""
+
 from __future__ import annotations
 
 import unittest

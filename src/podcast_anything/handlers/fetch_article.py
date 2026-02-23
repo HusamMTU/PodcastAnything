@@ -1,4 +1,5 @@
 """Lambda handler: fetch and extract source text (article or YouTube transcript)."""
+
 from __future__ import annotations
 
 import logging

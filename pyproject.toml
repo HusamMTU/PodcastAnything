@@ -17,6 +17,16 @@ infra = [
   "aws-cdk-lib>=2.0.0,<3.0.0",
   "constructs>=10.0.0,<11.0.0",
 ]
+dev = [
+  "ruff>=0.11.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
 
 [build-system]
 requires = ["hatchling"]

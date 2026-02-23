@@ -1,8 +1,9 @@
 """Unit tests for Polly TTS helper chunking behavior."""
+
 from __future__ import annotations
 
-from io import BytesIO
 import unittest
+from io import BytesIO
 from unittest.mock import Mock, patch
 
 from podcast_anything.tts import TTSError, synthesize_speech
