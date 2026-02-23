@@ -118,8 +118,18 @@ def fetch_transcript_text(url: str) -> str:
     except YouTubeTranscriptError:
         raise
     except Exception as exc:
+        message = str(exc)
+        if (
+            "YouTube is blocking requests from your IP" in message
+            or "RequestBlocked" in message
+            or "IpBlocked" in message
+        ):
+            raise YouTubeTranscriptError(
+                "YouTube transcript fetch is blocked from this AWS/Lambda network. "
+                "Provide the transcript text directly (API field `transcript_text` / `source_text`) "
+                "or use `scripts/start_execution.py --transcript-file ...`."
+            ) from exc
         raise YouTubeTranscriptError(f"Failed to fetch YouTube transcript: {exc}") from exc
 
     lines = _extract_text_lines_from_segments(segments)
     return _normalize_transcript_lines(lines)
-

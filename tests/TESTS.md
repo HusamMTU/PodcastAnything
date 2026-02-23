@@ -52,11 +52,13 @@ scripts/test.sh
 ## `tests/test_api.py`
 
 - `test_start_pipeline_execution_uses_explicit_state_machine_arn`: starts Step Functions execution with a provided ARN.
+- `test_start_pipeline_execution_includes_source_text_when_provided`: includes caller-provided source/transcript text in Step Functions input.
 - `test_start_pipeline_execution_resolves_state_machine_arn_from_stack`: resolves ARN from CloudFormation outputs before starting execution.
 - `test_resolve_state_machine_arn_raises_when_output_missing`: fails fast when `PipelineStateMachineArn` output is absent.
 - `test_start_pipeline_execution_generates_job_id_when_missing`: auto-generates a unique job ID when none is provided.
 - `test_start_execution_handler_rejects_invalid_json`: returns `400` for malformed JSON request bodies.
 - `test_start_execution_handler_returns_accepted`: returns `202` and delegates execution start to service layer.
+- `test_start_execution_handler_accepts_transcript_text_alias`: accepts `transcript_text` and forwards it as `source_text`.
 - `test_get_execution_handler_requires_execution_arn`: returns `400` when execution identifier is missing.
 - `test_get_execution_handler_returns_status`: returns `200` with execution status payload from service layer.
 
@@ -65,3 +67,4 @@ scripts/test.sh
 - `test_detects_supported_youtube_hosts`: detects supported YouTube URL hosts.
 - `test_extracts_video_id_from_common_formats`: extracts video IDs from watch, short, and embed URL formats.
 - `test_raises_when_video_id_cannot_be_extracted`: raises a clear error for malformed YouTube URLs.
+- `test_returns_clean_error_when_youtube_blocks_cloud_ip`: maps cloud-IP transcript block errors to a clearer actionable message.

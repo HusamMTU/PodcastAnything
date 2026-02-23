@@ -18,8 +18,12 @@ def _error_response(exc: Exception) -> dict[str, Any]:
 def start_execution_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     try:
         payload = parse_json_body(event)
+        source_text = payload.get("source_text")
+        if source_text is None:
+            source_text = payload.get("transcript_text")
         result = start_pipeline_execution(
             source_url=payload.get("source_url"),
+            source_text=source_text,
             job_id=payload.get("job_id"),
             style=payload.get("style", "podcast"),
             region=read_query_param(event, "region"),
@@ -53,4 +57,3 @@ def get_execution_handler(event: dict[str, Any], _context: Any) -> dict[str, Any
         return _error_response(exc)
 
     return json_response(200, result)
-

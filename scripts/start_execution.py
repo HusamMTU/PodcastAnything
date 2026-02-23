@@ -22,9 +22,14 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Start a Podcast Anything pipeline execution."
     )
-    parser.add_argument("source_url", help="Article URL to process")
+    parser.add_argument("source_url", help="Source URL to process (article or YouTube)")
     parser.add_argument("job_id", nargs="?", default=None, help="Optional job id")
     parser.add_argument("style", nargs="?", default="podcast", help="Podcast style label")
+    parser.add_argument(
+        "--transcript-file",
+        default=None,
+        help="Optional path to transcript text file (bypasses YouTube transcript fetch in Lambda)",
+    )
     parser.add_argument(
         "--mode",
         choices=["api", "direct"],
@@ -77,10 +82,29 @@ def _resolve_stack_output(*, region: str, stack_name: str, output_key: str) -> s
     )
 
 
-def _post_execution(*, api_url: str, source_url: str, job_id: str | None, style: str) -> dict:
+def _read_transcript_file(path: str | None) -> str | None:
+    if not path:
+        return None
+    with open(path, "r", encoding="utf-8") as file_obj:
+        text = file_obj.read().strip()
+    if not text:
+        raise RuntimeError(f"Transcript file is empty: {path}")
+    return text
+
+
+def _post_execution(
+    *,
+    api_url: str,
+    source_url: str,
+    job_id: str | None,
+    style: str,
+    source_text: str | None,
+) -> dict:
     payload = {"source_url": source_url, "style": style}
     if job_id:
         payload["job_id"] = job_id
+    if source_text:
+        payload["source_text"] = source_text
 
     body = json.dumps(payload).encode("utf-8")
     url = f"{api_url.rstrip('/')}/executions"
@@ -110,6 +134,7 @@ def main() -> None:
     args = _parse_args()
 
     try:
+        source_text = _read_transcript_file(args.transcript_file)
         if args.mode == "api":
             api_url = args.api_url or _resolve_stack_output(
                 region=args.region,
@@ -121,10 +146,12 @@ def main() -> None:
                 source_url=args.source_url,
                 job_id=args.job_id,
                 style=args.style,
+                source_text=source_text,
             )
         else:
             response = start_pipeline_execution(
                 source_url=args.source_url,
+                source_text=source_text,
                 job_id=args.job_id,
                 style=args.style,
                 region=args.region,

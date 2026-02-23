@@ -34,7 +34,9 @@ Current orchestration:
 - `src/podcast_anything/handlers/` Lambda handlers
 - `src/podcast_anything/api/` API service + API Gateway Lambda handlers
 - `src/podcast_anything/event_schema.py` Typed event schema and stage validation
+- `src/podcast_anything/youtube.py` YouTube transcript URL parsing + fetch helpers
 - `scripts/start_execution.py` Helper script to start Step Functions executions
+- `scripts/fetch_youtube_transcript.py` Local helper to fetch YouTube transcripts into `.txt`
 - `infra/` CDK app (Python) for AWS resources
 - `infra/INFRA.md` Infra resource breakdown and architecture sketch
 - `SYSTEM.md` System contracts and architecture notes
@@ -86,15 +88,21 @@ Optional:
 Before starting executions, make sure the AWS infrastructure is already deployed (`PodcastAnythingStack`), including the Step Functions state machine and S3 bucket.
 If it is not deployed yet, run the steps in `Deploy Infrastructure With CDK` first.
 
-Use the helper script (API mode by default):
+The helper script uses the HTTP API by default (`POST /executions`).
+
+Article example:
 
 ```bash
 python scripts/start_execution.py "https://example.com/article"
-# or
+```
+
+YouTube example (transcript fetched in AWS):
+
+```bash
 python scripts/start_execution.py "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
-Optional flags:
+Optional `job_id` and `style`:
 
 ```bash
 python scripts/start_execution.py "https://example.com/article" "job-001" "podcast" \
@@ -102,11 +110,36 @@ python scripts/start_execution.py "https://example.com/article" "job-001" "podca
   --stack-name PodcastAnythingStack
 ```
 
-If `job_id` is omitted, the system generates a unique timestamp-based ID automatically.
+Notes:
+- If `job_id` is omitted, the system generates a unique timestamp-based ID automatically.
+- In default mode, the script resolves `HttpApiUrl` from `PodcastAnythingStack` outputs.
+- Direct Step Functions mode is available with `--mode direct`.
 
-In default mode, the script resolves `HttpApiUrl` from `PodcastAnythingStack` outputs and calls `POST /executions`.
+### YouTube Fallback (Recommended)
 
-Direct Step Functions mode is still available:
+YouTube transcript fetching may fail from AWS/Lambda due to IP blocking. The reliable fallback is:
+1. Fetch captions locally on your machine.
+2. Save/export as plain text (`.txt`).
+3. Pass that file with `--transcript-file`.
+
+Local helper (uses `youtube_transcript_api` on your machine):
+
+```bash
+python scripts/fetch_youtube_transcript.py "https://www.youtube.com/watch?v=7eNey0TN2pw"
+```
+
+This writes a file like `youtube-7eNey0TN2pw-transcript.txt`.
+
+Run the pipeline using the local transcript:
+
+```bash
+python scripts/start_execution.py "https://www.youtube.com/watch?v=7eNey0TN2pw" \
+  --transcript-file ./my_transcript.txt
+```
+
+You can also use `yt-dlp` locally if it works better in your environment, then pass the resulting text file.
+
+Direct Step Functions mode (optional):
 
 ```bash
 python scripts/start_execution.py "https://example.com/article" "job-001" "podcast" \
@@ -114,7 +147,7 @@ python scripts/start_execution.py "https://example.com/article" "job-001" "podca
   --state-machine-arn "$PIPELINE_STATE_MACHINE_ARN"
 ```
 
-You can still call the AWS CLI directly:
+AWS CLI (direct Step Functions) example:
 
 ```bash
 aws stepfunctions start-execution \
@@ -129,7 +162,7 @@ The pipeline writes these artifacts to S3:
 - `jobs/<job_id>/script.json`
 - `jobs/<job_id>/audio.mp3`
 
-Note: `article.txt` currently stores the normalized source text for both article and YouTube transcript inputs.
+`article.txt` currently stores normalized source text for both article and YouTube transcript inputs.
 
 Audio synthesis details:
 - Handler uses SSML mode (`TextType=ssml`) with `<prosody>` and pause tags for better pacing.
@@ -141,12 +174,15 @@ Audio synthesis details:
 The CDK stack now deploys an HTTP API with these routes:
 
 - `POST /executions`
-  - Starts a new Step Functions execution.
-  - Request JSON: `{"source_url":"...","job_id":"optional","style":"podcast"}`
-  - `source_url` can be a public article URL or a YouTube video URL.
-  - Optional: `state_machine_arn` in body or query string.
+  - Starts a Step Functions execution
+  - Body fields:
+    - `source_url` (required): public article URL or YouTube video URL
+    - `job_id` (optional)
+    - `style` (optional, default `podcast`)
+    - `source_text` or `transcript_text` (optional fallback when YouTube fetch is blocked)
+    - `state_machine_arn` (optional override)
 - `GET /executions?execution_arn=...`
-  - Returns Step Functions execution status and parsed input/output when available.
+  - Returns execution status and parsed input/output (when available)
 
 Get API URL from stack outputs:
 
@@ -157,7 +193,7 @@ aws cloudformation describe-stacks \
   --output text
 ```
 
-Example calls:
+Examples:
 
 ```bash
 API_URL="https://<your-api-id>.execute-api.us-east-1.amazonaws.com"
@@ -171,6 +207,12 @@ curl -sS -X POST "$API_URL/executions" \
 curl -sS -X POST "$API_URL/executions" \
   -H "content-type: application/json" \
   -d '{"source_url":"https://www.youtube.com/watch?v=jNQXAC9IVRw","style":"podcast"}'
+```
+
+```bash
+curl -sS -X POST "$API_URL/executions" \
+  -H "content-type: application/json" \
+  -d '{"source_url":"https://www.youtube.com/watch?v=7eNey0TN2pw","transcript_text":"<paste transcript here>","style":"podcast"}'
 ```
 
 ```bash
@@ -197,7 +239,7 @@ cdk deploy PodcastAnythingStack
 
 Stack resources:
 - S3 artifacts bucket
-- Lambda dependency layer (`requests`, `beautifulsoup4`)
+- Lambda dependency layer (`requests`, `beautifulsoup4`, `youtube-transcript-api`)
 - Lambda functions: `FetchArticleFn`, `RewriteScriptFn`, `GenerateAudioFn`
 - API Lambda functions: `StartExecutionApiFn`, `GetExecutionApiFn`
 - Step Functions state machine: `PipelineStateMachine`
@@ -217,13 +259,14 @@ Stack resources:
 - Bedrock `AccessDeniedException` or model not available
   - Confirm model access is enabled for your account/region and that `BEDROCK_MODEL_ID` is valid in that region.
 - YouTube transcript fetch fails
-  - Some videos disable transcripts or restrict transcript access. Try a different video with captions available.
+  - Some videos disable transcripts or restrict transcript access. AWS/Lambda IPs may also be blocked by YouTube.
+  - Workaround: call the API with `transcript_text` (or use `scripts/start_execution.py --transcript-file ...`).
 - S3 bucket creation fails with `BucketAlreadyExists`
   - Update `MP_BUCKET` to a globally unique name (for example include account ID + region).
 - CDK warns it cannot assume bootstrap roles but proceeds
   - This is usually non-fatal if your current credentials still have deploy permissions.
 - Step Functions execution fails because of input validation
-  - Provide `job_id` and `source_url` for the first step. The handlers now validate stage-specific event fields.
+  - Provide `source_url` for API start requests (and `job_id` only if overriding the auto-generated value).
 - Polly fails with `EngineNotSupportedException` or voice errors
   - Pick a `POLLY_VOICE_ID` that supports the `generative` engine in your configured region.
 

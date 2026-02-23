@@ -2,8 +2,14 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
-from podcast_anything.youtube import YouTubeTranscriptError, extract_video_id, is_youtube_url
+from podcast_anything.youtube import (
+    YouTubeTranscriptError,
+    extract_video_id,
+    fetch_transcript_text,
+    is_youtube_url,
+)
 
 
 class YouTubeUrlTests(unittest.TestCase):
@@ -27,7 +33,14 @@ class YouTubeUrlTests(unittest.TestCase):
         with self.assertRaisesRegex(YouTubeTranscriptError, "extract video id"):
             extract_video_id("https://www.youtube.com/watch")
 
+    @patch(
+        "podcast_anything.youtube._fetch_segments_with_library",
+        side_effect=RuntimeError("YouTube is blocking requests from your IP"),
+    )
+    def test_returns_clean_error_when_youtube_blocks_cloud_ip(self, _mock_fetch: object) -> None:
+        with self.assertRaisesRegex(YouTubeTranscriptError, "blocked from this AWS/Lambda network"):
+            fetch_transcript_text("https://www.youtube.com/watch?v=abc123XYZ00")
+
 
 if __name__ == "__main__":
     unittest.main()
-

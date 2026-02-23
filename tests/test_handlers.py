@@ -76,6 +76,41 @@ class FetchArticleHandlerTests(unittest.TestCase):
         mock_put_text.assert_called_once_with("default-bucket", expected_key, "transcript text")
         self.assertEqual("youtube", result["source_type"])
 
+    @patch("podcast_anything.handlers.fetch_article.put_text")
+    @patch("podcast_anything.handlers.fetch_article.youtube.fetch_transcript_text")
+    @patch("podcast_anything.handlers.fetch_article.article.fetch_html")
+    @patch("podcast_anything.handlers.fetch_article.load_settings")
+    def test_uses_provided_source_text_and_skips_remote_fetch(
+        self,
+        mock_settings: Mock,
+        mock_fetch_html: Mock,
+        mock_fetch_transcript: Mock,
+        mock_put_text: Mock,
+    ) -> None:
+        mock_settings.return_value = Settings(
+            bucket="default-bucket",
+            region="us-east-1",
+            bedrock_model_id="amazon.nova-lite-v1:0",
+            polly_voice_id="Joanna",
+        )
+        event = {
+            "job_id": "job-yt-2",
+            "source_url": "https://www.youtube.com/watch?v=7eNey0TN2pw",
+            "source_text": "provided transcript text",
+        }
+
+        result = fetch_article.handler(event, None)
+
+        mock_fetch_html.assert_not_called()
+        mock_fetch_transcript.assert_not_called()
+        mock_put_text.assert_called_once_with(
+            "default-bucket",
+            "jobs/job-yt-2/article.txt",
+            "provided transcript text",
+        )
+        self.assertEqual("youtube", result["source_type"])
+        self.assertNotIn("source_text", result)
+
 
 class RewriteScriptHandlerTests(unittest.TestCase):
     def test_requires_job_id_and_article_s3_key(self) -> None:
@@ -106,6 +141,7 @@ class RewriteScriptHandlerTests(unittest.TestCase):
         event = {
             "job_id": "job-456",
             "source_url": "https://example.com/article",
+            "source_type": "youtube",
             "title": "Sample Title",
             "style": "podcast",
             "article_s3_key": "jobs/job-456/article.txt",
@@ -121,7 +157,7 @@ class RewriteScriptHandlerTests(unittest.TestCase):
             article_text="article text",
             title="Sample Title",
             style="podcast",
-            source_type=None,
+            source_type="youtube",
         )
         mock_call_bedrock.assert_called_once_with("us.amazon.nova-lite-v1:0", "prompt text")
         mock_put_text.assert_called_once_with("default-bucket", script_key, "podcast script")
@@ -132,7 +168,7 @@ class RewriteScriptHandlerTests(unittest.TestCase):
         self.assertEqual(metadata_key, put_json_args[1])
         self.assertEqual(script_key, put_json_args[2]["script_s3_key"])
         self.assertEqual("us.amazon.nova-lite-v1:0", put_json_args[2]["model_id"])
-        self.assertIsNone(put_json_args[2]["source_type"])
+        self.assertEqual("youtube", put_json_args[2]["source_type"])
 
         self.assertEqual(script_key, result["script_s3_key"])
         self.assertEqual(metadata_key, result["script_metadata_s3_key"])

@@ -7,6 +7,7 @@ Current stage takes an article URL or YouTube video URL (transcript), rewrites i
 
 Current Scope (Implemented)
 - Input: Public article URL or YouTube video URL (transcript-based)
+- Fallback input: caller-provided transcript/source text (`source_text`) when YouTube transcript fetch is blocked
 - Output: Podcast script text + MP3 audio
 - Orchestration: Step Functions state machine
 - Execution helper script: `scripts/start_execution.py` (API-first, direct Step Functions fallback)
@@ -43,6 +44,7 @@ Input Event Contract
 {
   "job_id": "uuid-or-string",
   "source_url": "https://example.com/article",
+  "source_text": "optional raw source/transcript text",
   "title": "optional title",
   "style": "podcast",
   "voice_id": "Joanna",
@@ -60,7 +62,7 @@ Script Metadata Contract (`script.json`)
 }
 
 Handler Contracts
-- `fetch_article`: reads `job_id`, `source_url`; fetches article text or YouTube transcript; writes `article.txt`; returns `article_s3_key` and inferred `source_type`
+- `fetch_article`: reads `job_id`, `source_url`; fetches article text or YouTube transcript (or uses provided `source_text`); writes `article.txt`; returns `article_s3_key` and inferred `source_type`
 - `rewrite_script`: reads `job_id`, `article_s3_key`; writes `script.txt` and `script.json`; returns `script_s3_key`
 - `generate_audio`: reads `job_id`, `script_s3_key`; writes `audio.mp3`; returns `audio_s3_key`
   - synthesis mode: SSML with chunking (`max_text_chars=1800`) to avoid Polly request length limits

@@ -36,6 +36,27 @@ class ApiServiceTests(unittest.TestCase):
         self.assertEqual("arn:aws:states:us-east-1:123:stateMachine:sm", result["state_machine_arn"])
 
     @patch("podcast_anything.api.service.boto3.session.Session")
+    def test_start_pipeline_execution_includes_source_text_when_provided(self, mock_session_cls: Mock) -> None:
+        mock_session = Mock()
+        mock_sf = Mock()
+        mock_sf.start_execution.return_value = {
+            "executionArn": "arn:aws:states:us-east-1:123:execution:sm:exec-1",
+            "startDate": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        }
+        mock_session.client.return_value = mock_sf
+        mock_session_cls.return_value = mock_session
+
+        start_pipeline_execution(
+            source_url="https://www.youtube.com/watch?v=abc123XYZ00",
+            source_text="provided transcript",
+            state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
+            region="us-east-1",
+        )
+
+        payload = json.loads(mock_sf.start_execution.call_args.kwargs["input"])
+        self.assertEqual("provided transcript", payload["source_text"])
+
+    @patch("podcast_anything.api.service.boto3.session.Session")
     def test_start_pipeline_execution_resolves_state_machine_arn_from_stack(self, mock_session_cls: Mock) -> None:
         mock_session = Mock()
         mock_cf = Mock()
@@ -130,6 +151,24 @@ class ApiHandlerTests(unittest.TestCase):
 
         self.assertEqual(202, response["statusCode"])
         mock_start.assert_called_once()
+
+    @patch("podcast_anything.api.handlers.start_pipeline_execution")
+    def test_start_execution_handler_accepts_transcript_text_alias(self, mock_start: Mock) -> None:
+        mock_start.return_value = {"job_id": "job-1", "execution_arn": "arn:execution"}
+        event = {
+            "body": json.dumps(
+                {
+                    "source_url": "https://www.youtube.com/watch?v=abc123XYZ00",
+                    "transcript_text": "hello transcript",
+                }
+            )
+        }
+
+        response = handlers.start_execution_handler(event, None)
+
+        self.assertEqual(202, response["statusCode"])
+        mock_start.assert_called_once()
+        self.assertEqual("hello transcript", mock_start.call_args.kwargs["source_text"])
 
     def test_get_execution_handler_requires_execution_arn(self) -> None:
         response = handlers.get_execution_handler({}, None)

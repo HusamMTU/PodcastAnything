@@ -94,6 +94,7 @@ def resolve_state_machine_arn(*, cloudformation: Any, stack_name: str) -> str:
 def start_pipeline_execution(
     *,
     source_url: str,
+    source_text: str | None = None,
     job_id: str | None = None,
     style: str = "podcast",
     region: str | None = None,
@@ -101,6 +102,11 @@ def start_pipeline_execution(
     state_machine_arn: str | None = None,
 ) -> dict[str, Any]:
     cleaned_source_url = _require_non_empty(source_url, "source_url")
+    cleaned_source_text = (
+        source_text.strip()
+        if isinstance(source_text, str) and source_text.strip()
+        else None
+    )
     cleaned_job_id = job_id.strip() if isinstance(job_id, str) and job_id.strip() else None
     cleaned_style = style.strip() if isinstance(style, str) and style.strip() else "podcast"
     cleaned_region = region.strip() if isinstance(region, str) and region.strip() else _default_region()
@@ -121,6 +127,8 @@ def start_pipeline_execution(
         "source_url": cleaned_source_url,
         "style": cleaned_style,
     }
+    if cleaned_source_text:
+        payload["source_text"] = cleaned_source_text
 
     try:
         session = boto3.session.Session(region_name=cleaned_region)

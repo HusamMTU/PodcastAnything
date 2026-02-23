@@ -20,7 +20,14 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     settings = load_settings()
     bucket = pipeline_event.resolved_bucket(settings.bucket)
 
-    if youtube.is_youtube_url(source_url):
+    if pipeline_event.source_text:
+        text = pipeline_event.source_text
+        source_type = "youtube" if youtube.is_youtube_url(source_url) else "text"
+        logger.info(
+            "Using provided source_text",
+            extra={"job_id": job_id, "source_type": source_type},
+        )
+    elif youtube.is_youtube_url(source_url):
         text = youtube.fetch_transcript_text(source_url)
         source_type = "youtube"
         logger.info("Fetched YouTube transcript", extra={"job_id": job_id})
@@ -39,6 +46,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
     return pipeline_event.with_updates(
         bucket=bucket,
+        source_text=None,  # drop large inline source text after persisting to S3
         source_type=source_type,
         article_s3_key=article_key,
         article_char_count=len(text),
