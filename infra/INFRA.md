@@ -9,6 +9,7 @@ This directory contains the AWS CDK app for the `PodcastAnythingStack`.
   - `auto_delete_objects=True` and `removal_policy=DESTROY` for clean teardown.
 - `PythonDepsLayer` (Lambda Layer)
   - Built from `infra/layers/requirements.txt` using Docker during synth/deploy.
+  - Includes article parsing and YouTube transcript fetch dependencies.
 - `FetchArticleFn` (Lambda, Python 3.11)
   - Handler: `podcast_anything.handlers.fetch_article.handler`
 - `RewriteScriptFn` (Lambda, Python 3.11)
@@ -80,7 +81,7 @@ flowchart TD
   SFN -->|invokes first step| F
   G --> DONE[Execution result\nincludes audio_s3_key]
 
-  F -->|write article.txt| S3[(S3 ArtifactsBucket)]
+  F -->|write normalized source text to article.txt| S3[(S3 ArtifactsBucket)]
   R -->|read article.txt| S3
   R -->|write script.txt + script.json| S3
   G -->|read script.txt| S3

@@ -14,6 +14,7 @@ class FetchArticleHandlerTests(unittest.TestCase):
             fetch_article.handler({}, None)
 
     @patch("podcast_anything.handlers.fetch_article.put_text")
+    @patch("podcast_anything.handlers.fetch_article.youtube.is_youtube_url", return_value=False)
     @patch("podcast_anything.handlers.fetch_article.article.extract_text", return_value="clean article text")
     @patch("podcast_anything.handlers.fetch_article.article.fetch_html", return_value="<html>...</html>")
     @patch("podcast_anything.handlers.fetch_article.load_settings")
@@ -22,6 +23,7 @@ class FetchArticleHandlerTests(unittest.TestCase):
         mock_settings: Mock,
         _mock_fetch_html: Mock,
         _mock_extract_text: Mock,
+        _mock_is_youtube_url: Mock,
         mock_put_text: Mock,
     ) -> None:
         mock_settings.return_value = Settings(
@@ -40,8 +42,39 @@ class FetchArticleHandlerTests(unittest.TestCase):
         expected_key = "jobs/job-123/article.txt"
         mock_put_text.assert_called_once_with("default-bucket", expected_key, "clean article text")
         self.assertEqual("default-bucket", result["bucket"])
+        self.assertEqual("article", result["source_type"])
         self.assertEqual(expected_key, result["article_s3_key"])
         self.assertEqual(len("clean article text"), result["article_char_count"])
+
+    @patch("podcast_anything.handlers.fetch_article.put_text")
+    @patch("podcast_anything.handlers.fetch_article.youtube.fetch_transcript_text", return_value="transcript text")
+    @patch("podcast_anything.handlers.fetch_article.youtube.is_youtube_url", return_value=True)
+    @patch("podcast_anything.handlers.fetch_article.load_settings")
+    def test_fetches_youtube_transcript_and_stores_text(
+        self,
+        mock_settings: Mock,
+        mock_is_youtube_url: Mock,
+        mock_fetch_transcript: Mock,
+        mock_put_text: Mock,
+    ) -> None:
+        mock_settings.return_value = Settings(
+            bucket="default-bucket",
+            region="us-east-1",
+            bedrock_model_id="amazon.nova-lite-v1:0",
+            polly_voice_id="Joanna",
+        )
+        event = {
+            "job_id": "job-yt-1",
+            "source_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        }
+
+        result = fetch_article.handler(event, None)
+
+        expected_key = "jobs/job-yt-1/article.txt"
+        mock_is_youtube_url.assert_called_once_with(event["source_url"])
+        mock_fetch_transcript.assert_called_once_with(event["source_url"])
+        mock_put_text.assert_called_once_with("default-bucket", expected_key, "transcript text")
+        self.assertEqual("youtube", result["source_type"])
 
 
 class RewriteScriptHandlerTests(unittest.TestCase):
@@ -88,6 +121,7 @@ class RewriteScriptHandlerTests(unittest.TestCase):
             article_text="article text",
             title="Sample Title",
             style="podcast",
+            source_type=None,
         )
         mock_call_bedrock.assert_called_once_with("us.amazon.nova-lite-v1:0", "prompt text")
         mock_put_text.assert_called_once_with("default-bucket", script_key, "podcast script")
@@ -98,6 +132,7 @@ class RewriteScriptHandlerTests(unittest.TestCase):
         self.assertEqual(metadata_key, put_json_args[1])
         self.assertEqual(script_key, put_json_args[2]["script_s3_key"])
         self.assertEqual("us.amazon.nova-lite-v1:0", put_json_args[2]["model_id"])
+        self.assertIsNone(put_json_args[2]["source_type"])
 
         self.assertEqual(script_key, result["script_s3_key"])
         self.assertEqual(metadata_key, result["script_metadata_s3_key"])

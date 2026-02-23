@@ -10,16 +10,23 @@ class LLMError(RuntimeError):
     pass
 
 
-def build_podcast_prompt(article_text: str, title: str | None = None, style: str = "podcast") -> str:
+def build_podcast_prompt(
+    article_text: str,
+    title: str | None = None,
+    style: str = "podcast",
+    source_type: str | None = None,
+) -> str:
     title_line = f"Title: {title}\n" if title else ""
+    source_label = "YouTube transcript" if source_type == "youtube" else "source material"
     return (
-        "You are a podcast writer. Rewrite the following article into a natural, "
+        "You are a podcast writer. Rewrite the following source material into a natural, "
         "single-host podcast script. Keep it engaging, clear, and structured with an intro, "
         "3-5 short segments with signposts, and a concise outro. Aim for 6-10 minutes of speech. "
         "Use plain text only; do not include JSON, markdown, or stage directions.\n\n"
         f"Style: {style}\n"
         f"{title_line}"
-        "Article:\n"
+        f"Input Type: {source_type or 'article'}\n"
+        f"{source_label}:\n"
         f"{article_text}"
     )
 

@@ -12,6 +12,7 @@ class EventSchemaError(ValueError):
 _KNOWN_FIELDS = {
     "job_id",
     "source_url",
+    "source_type",
     "title",
     "style",
     "voice_id",
@@ -50,6 +51,7 @@ def _read_optional_int(value: Any, field_name: str) -> int | None:
 class PipelineEvent:
     job_id: str | None = None
     source_url: str | None = None
+    source_type: str | None = None
     title: str | None = None
     style: str = "podcast"
     voice_id: str | None = None
@@ -70,6 +72,7 @@ class PipelineEvent:
         event = cls(
             job_id=_read_optional_string(payload.get("job_id"), "job_id"),
             source_url=_read_optional_string(payload.get("source_url"), "source_url"),
+            source_type=_read_optional_string(payload.get("source_type"), "source_type"),
             title=_read_optional_string(payload.get("title"), "title"),
             style=_read_optional_string(payload.get("style"), "style") or "podcast",
             voice_id=_read_optional_string(payload.get("voice_id"), "voice_id"),
@@ -133,6 +136,7 @@ class PipelineEvent:
         for key, value in (
             ("job_id", self.job_id),
             ("source_url", self.source_url),
+            ("source_type", self.source_type),
             ("title", self.title),
             ("style", self.style),
             ("voice_id", self.voice_id),

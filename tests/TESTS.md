@@ -27,6 +27,7 @@ scripts/test.sh
 
 - `test_requires_job_id_and_source_url`: `fetch_article.handler` rejects missing required input fields.
 - `test_fetches_extracts_and_stores_article`: `fetch_article.handler` fetches, extracts, stores text, and returns expected output keys.
+- `test_fetches_youtube_transcript_and_stores_text`: `fetch_article.handler` detects YouTube URLs, fetches transcript text, and stores it in S3.
 - `test_requires_job_id_and_article_s3_key`: `rewrite_script.handler` rejects missing required input fields.
 - `test_reads_article_rewrites_and_stores_outputs`: `rewrite_script.handler` builds prompt, calls Bedrock helper, stores script and metadata.
 - `test_requires_job_id_and_script_s3_key`: `generate_audio.handler` rejects missing required input fields.
@@ -53,7 +54,14 @@ scripts/test.sh
 - `test_start_pipeline_execution_uses_explicit_state_machine_arn`: starts Step Functions execution with a provided ARN.
 - `test_start_pipeline_execution_resolves_state_machine_arn_from_stack`: resolves ARN from CloudFormation outputs before starting execution.
 - `test_resolve_state_machine_arn_raises_when_output_missing`: fails fast when `PipelineStateMachineArn` output is absent.
+- `test_start_pipeline_execution_generates_job_id_when_missing`: auto-generates a unique job ID when none is provided.
 - `test_start_execution_handler_rejects_invalid_json`: returns `400` for malformed JSON request bodies.
 - `test_start_execution_handler_returns_accepted`: returns `202` and delegates execution start to service layer.
 - `test_get_execution_handler_requires_execution_arn`: returns `400` when execution identifier is missing.
 - `test_get_execution_handler_returns_status`: returns `200` with execution status payload from service layer.
+
+## `tests/test_youtube.py`
+
+- `test_detects_supported_youtube_hosts`: detects supported YouTube URL hosts.
+- `test_extracts_video_id_from_common_formats`: extracts video IDs from watch, short, and embed URL formats.
+- `test_raises_when_video_id_cannot_be_extracted`: raises a clear error for malformed YouTube URLs.

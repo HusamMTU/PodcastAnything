@@ -65,7 +65,7 @@ class PodcastAnythingStack(cdk.Stack):
                     ],
                 ),
             ),
-            description="Requests + BeautifulSoup for article fetching.",
+            description="Source fetching deps (requests, BeautifulSoup, YouTube transcript API).",
         )
 
         fetch_article_fn = lambda_.Function(

@@ -11,7 +11,7 @@ Why "anything"? Future inputs can include:
 - another podcast (or two, or three)
 - and more
 
-In the current stage, the system takes an article URL and generates a single-speaker podcast:
+In the current stage, the system takes a public article URL or YouTube video URL (via transcript) and generates a single-speaker podcast:
 - a podcast-style script (`script.txt`)
 - an audio file (`audio.mp3`)
 
@@ -19,8 +19,8 @@ Later stages will support additional source types for curation and multi-speaker
 
 ## What Is Implemented
 
-1. Fetch article HTML and extract readable text.
-2. Rewrite the article text into a podcast-style script via Bedrock.
+1. Fetch source text from an article page or YouTube transcript.
+2. Rewrite the source text into a podcast-style script via Bedrock.
 3. Synthesize the script into MP3 via Polly (SSML + generative engine).
 4. Store artifacts in S3 under `jobs/<job_id>/`.
 
@@ -90,6 +90,8 @@ Use the helper script (API mode by default):
 
 ```bash
 python scripts/start_execution.py "https://example.com/article"
+# or
+python scripts/start_execution.py "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
 Optional flags:
@@ -127,6 +129,8 @@ The pipeline writes these artifacts to S3:
 - `jobs/<job_id>/script.json`
 - `jobs/<job_id>/audio.mp3`
 
+Note: `article.txt` currently stores the normalized source text for both article and YouTube transcript inputs.
+
 Audio synthesis details:
 - Handler uses SSML mode (`TextType=ssml`) with `<prosody>` and pause tags for better pacing.
 - Polly engine is set to `generative`.
@@ -139,6 +143,7 @@ The CDK stack now deploys an HTTP API with these routes:
 - `POST /executions`
   - Starts a new Step Functions execution.
   - Request JSON: `{"source_url":"...","job_id":"optional","style":"podcast"}`
+  - `source_url` can be a public article URL or a YouTube video URL.
   - Optional: `state_machine_arn` in body or query string.
 - `GET /executions?execution_arn=...`
   - Returns Step Functions execution status and parsed input/output when available.
@@ -160,6 +165,12 @@ API_URL="https://<your-api-id>.execute-api.us-east-1.amazonaws.com"
 curl -sS -X POST "$API_URL/executions" \
   -H "content-type: application/json" \
   -d '{"source_url":"https://en.wikipedia.org/wiki/Vision_transformer","style":"podcast"}'
+```
+
+```bash
+curl -sS -X POST "$API_URL/executions" \
+  -H "content-type: application/json" \
+  -d '{"source_url":"https://www.youtube.com/watch?v=jNQXAC9IVRw","style":"podcast"}'
 ```
 
 ```bash
@@ -205,6 +216,8 @@ Stack resources:
   - Start Docker Desktop before running `cdk synth` or `cdk deploy` (the Lambda layer bundling uses Docker).
 - Bedrock `AccessDeniedException` or model not available
   - Confirm model access is enabled for your account/region and that `BEDROCK_MODEL_ID` is valid in that region.
+- YouTube transcript fetch fails
+  - Some videos disable transcripts or restrict transcript access. Try a different video with captions available.
 - S3 bucket creation fails with `BucketAlreadyExists`
   - Update `MP_BUCKET` to a globally unique name (for example include account ID + region).
 - CDK warns it cannot assume bootstrap roles but proceeds
