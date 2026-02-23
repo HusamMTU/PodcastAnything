@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-and-synth:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-east-1
+      MP_BUCKET: ci-podcast-anything-placeholder-123456789012-us-east-1
+      BEDROCK_MODEL_ID: amazon.nova-lite-v1:0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Node (for CDK/jsii)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: Create venv and install dependencies
+        run: |
+          uv venv .venv
+          uv sync --frozen --extra infra
+
+      - name: Run tests
+        run: scripts/test.sh
+
+      - name: CDK synth
+        working-directory: infra
+        run: cdk synth PodcastAnythingStack --no-notices
