@@ -102,20 +102,6 @@ YouTube example (transcript fetched in AWS):
 python scripts/start_execution.py "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
-Optional flags:
-
-```bash
-python scripts/start_execution.py "https://example.com/article" \
-  --style podcast \
-  --region us-east-1 \
-  --stack-name PodcastAnythingStack
-```
-
-Notes:
-- `job_id` is generated automatically by the service.
-- In default mode, the script resolves `HttpApiUrl` from `PodcastAnythingStack` outputs.
-- Direct Step Functions mode is available with `--mode direct`.
-
 ### YouTube Fallback (Recommended)
 
 YouTube transcript fetching may fail from AWS/Lambda due to IP blocking. The reliable fallback is:
@@ -139,24 +125,6 @@ python scripts/start_execution.py "https://www.youtube.com/watch?v=7eNey0TN2pw" 
 ```
 
 You can also use `yt-dlp` locally if it works better in your environment, then pass the resulting text file.
-
-Direct Step Functions mode (optional):
-
-```bash
-python scripts/start_execution.py "https://example.com/article" \
-  --mode direct \
-  --style podcast \
-  --state-machine-arn "$PIPELINE_STATE_MACHINE_ARN"
-```
-
-AWS CLI (direct Step Functions) example:
-
-```bash
-aws stepfunctions start-execution \
-  --region "${AWS_REGION:-us-east-1}" \
-  --state-machine-arn "$PIPELINE_STATE_MACHINE_ARN" \
-  --input '{"job_id":"job-001","source_url":"https://example.com/article","style":"podcast"}'
-```
 
 The pipeline writes these artifacts to S3:
 - `jobs/<job_id>/article.txt`
