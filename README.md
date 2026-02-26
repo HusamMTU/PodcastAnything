@@ -76,8 +76,10 @@ flowchart TD
 
   API --> SAE[Lambda: StartExecutionApiFn]
   API --> GES[Lambda: GetExecutionApiFn]
+  API -->|status response| U
   SAE --> SFN[Step Functions\nPipelineStateMachine]
   GES -->|DescribeExecution| SFN
+  SFN -->|execution status| GES
 
   subgraph PIPE[State Machine Execution Order]
     F[FetchArticleStep\nLambda: FetchArticleFn]
@@ -88,10 +90,11 @@ flowchart TD
   end
 
   SFN -->|invokes first step| F
+  NOTE[YouTube captions are fetched locally in CLI,\nnot inside Lambda] -.-> F
   F -->|write normalized source text to source.txt| S3[(S3 ArtifactsBucket)]
-  R -->|read source.txt| S3
+  S3 -->|read source.txt| R
   R -->|write script.txt + script.json| S3
-  G -->|read script.txt| S3
+  S3 -->|read script.txt| G
   G -->|write audio.mp3| S3
   R -->|InvokeModel| BR[Bedrock Runtime]
   G -->|SynthesizeSpeech| P[Amazon Polly]
