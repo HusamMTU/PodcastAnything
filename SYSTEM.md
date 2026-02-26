@@ -34,7 +34,7 @@ API Layer
 - `src/podcast_anything/api/handlers.py`: API Gateway-compatible Lambda proxy handlers
 
 Data Contract (S3 Paths)
-- `s3://<bucket>/jobs/<job_id>/article.txt`
+- `s3://<bucket>/jobs/<job_id>/source.txt`
 - `s3://<bucket>/jobs/<job_id>/script.txt`
 - `s3://<bucket>/jobs/<job_id>/script.json`
 - `s3://<bucket>/jobs/<job_id>/audio.mp3`
@@ -61,7 +61,7 @@ Script Metadata Contract (`script.json`)
 }
 
 Handler Contracts
-- `fetch_article`: reads `job_id`, `source_url`; fetches article text or uses provided `source_text`; writes `article.txt`; returns `article_s3_key` and inferred `source_type`
+- `fetch_article`: reads `job_id`, `source_url`; fetches article text or uses provided `source_text`; writes `source.txt`; returns `article_s3_key` and inferred `source_type`
 - `rewrite_script`: reads `job_id`, `article_s3_key`; writes `script.txt` and `script.json`; returns `script_s3_key`
 - `generate_audio`: reads `job_id`, `script_s3_key`; writes `audio.mp3`; returns `audio_s3_key`
   - synthesis mode: SSML with chunking (`max_text_chars=1800`) to avoid Polly request length limits

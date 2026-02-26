@@ -39,7 +39,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         text = article.extract_text(html)
         source_type = "article"
 
-    article_key = f"jobs/{job_id}/article.txt"
+    article_key = f"jobs/{job_id}/source.txt"
     put_text(bucket, article_key, text)
 
     logger.info(

@@ -131,12 +131,12 @@ python scripts/start_execution.py "https://www.youtube.com/watch?v=7eNey0TN2pw" 
 You can also use `yt-dlp` locally if it works better in your environment, then pass the resulting text file.
 
 The pipeline writes these artifacts to S3:
-- `jobs/<job_id>/article.txt`
+- `jobs/<job_id>/source.txt`
 - `jobs/<job_id>/script.txt`
 - `jobs/<job_id>/script.json`
 - `jobs/<job_id>/audio.mp3`
 
-`article.txt` currently stores normalized source text for both article and YouTube transcript inputs.
+`source.txt` stores normalized source text for both article and YouTube transcript inputs.
 
 Audio synthesis details:
 - Handler uses SSML mode (`TextType=ssml`) with `<prosody>` and pause tags for better pacing.

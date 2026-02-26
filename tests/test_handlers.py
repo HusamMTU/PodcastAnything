@@ -46,7 +46,7 @@ class FetchArticleHandlerTests(unittest.TestCase):
 
         result = fetch_article.handler(event, None)
 
-        expected_key = "jobs/job-123/article.txt"
+        expected_key = "jobs/job-123/source.txt"
         mock_put_text.assert_called_once_with("default-bucket", expected_key, "clean article text")
         self.assertEqual("default-bucket", result["bucket"])
         self.assertEqual("article", result["source_type"])
@@ -105,7 +105,7 @@ class FetchArticleHandlerTests(unittest.TestCase):
         mock_fetch_transcript.assert_not_called()
         mock_put_text.assert_called_once_with(
             "default-bucket",
-            "jobs/job-yt-2/article.txt",
+            "jobs/job-yt-2/source.txt",
             "provided transcript text",
         )
         self.assertEqual("youtube", result["source_type"])
@@ -146,7 +146,7 @@ class RewriteScriptHandlerTests(unittest.TestCase):
             "source_type": "youtube",
             "title": "Sample Title",
             "style": "podcast",
-            "article_s3_key": "jobs/job-456/article.txt",
+            "article_s3_key": "jobs/job-456/source.txt",
         }
 
         result = rewrite_script.handler(event, None)
@@ -154,7 +154,7 @@ class RewriteScriptHandlerTests(unittest.TestCase):
         script_key = "jobs/job-456/script.txt"
         metadata_key = "jobs/job-456/script.json"
 
-        mock_get_text.assert_called_once_with("default-bucket", "jobs/job-456/article.txt")
+        mock_get_text.assert_called_once_with("default-bucket", "jobs/job-456/source.txt")
         mock_build_prompt.assert_called_once_with(
             article_text="article text",
             title="Sample Title",

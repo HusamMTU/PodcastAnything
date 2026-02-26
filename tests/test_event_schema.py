@@ -50,10 +50,10 @@ class PipelineEventTests(unittest.TestCase):
         )
 
         rewrite_event = PipelineEvent.from_dict(
-            {"job_id": "job-2", "article_s3_key": "jobs/job-2/article.txt"}
+            {"job_id": "job-2", "article_s3_key": "jobs/job-2/source.txt"}
         )
         self.assertEqual(
-            ("job-2", "jobs/job-2/article.txt"),
+            ("job-2", "jobs/job-2/source.txt"),
             rewrite_event.require_rewrite_fields(),
         )
 

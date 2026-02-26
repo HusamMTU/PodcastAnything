@@ -81,8 +81,8 @@ flowchart TD
   SFN -->|invokes first step| F
   G --> DONE[Execution result\nincludes audio_s3_key]
 
-  F -->|write normalized source text to article.txt| S3[(S3 ArtifactsBucket)]
-  R -->|read article.txt| S3
+  F -->|write normalized source text to source.txt| S3[(S3 ArtifactsBucket)]
+  R -->|read source.txt| S3
   R -->|write script.txt + script.json| S3
   G -->|read script.txt| S3
   G -->|write audio.mp3| S3
