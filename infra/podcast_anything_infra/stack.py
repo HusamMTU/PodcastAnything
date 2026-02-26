@@ -98,8 +98,8 @@ class PodcastAnythingStack(cdk.Stack):
             runtime=lambda_.Runtime.PYTHON_3_11,
             handler="podcast_anything.handlers.generate_audio.handler",
             code=lambda_.Code.from_asset(str(src_path)),
-            memory_size=1024,
-            timeout=cdk.Duration.seconds(60),
+            memory_size=2048,
+            timeout=cdk.Duration.minutes(3),
             environment=common_env,
         )
 

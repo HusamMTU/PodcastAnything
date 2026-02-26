@@ -11,6 +11,8 @@ from typing import Any
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
+from podcast_anything.youtube import is_youtube_url
+
 
 class PipelineApiError(RuntimeError):
     """Raised when API-level pipeline actions fail."""
@@ -66,6 +68,14 @@ def _generate_job_id() -> str:
     return f"job-{timestamp}-{short_suffix}"
 
 
+def _validate_source_inputs(*, source_url: str, source_text: str | None) -> None:
+    if is_youtube_url(source_url) and not source_text:
+        raise PipelineApiError(
+            "YouTube URLs require transcript text in `source_text` (or API alias "
+            "`transcript_text`). AWS-side YouTube transcript fetch is disabled."
+        )
+
+
 def resolve_state_machine_arn(*, cloudformation: Any, stack_name: str) -> str:
     try:
         response = cloudformation.describe_stacks(StackName=stack_name)
@@ -115,6 +125,7 @@ def start_pipeline_execution(
         if isinstance(state_machine_arn, str) and state_machine_arn.strip()
         else _default_state_machine_arn()
     )
+    _validate_source_inputs(source_url=cleaned_source_url, source_text=cleaned_source_text)
 
     resolved_job_id = cleaned_job_id or _generate_job_id()
     payload = {

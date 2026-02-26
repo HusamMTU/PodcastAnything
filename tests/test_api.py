@@ -8,10 +8,24 @@ from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 from podcast_anything.api import handlers
-from podcast_anything.api.service import resolve_state_machine_arn, start_pipeline_execution
+from podcast_anything.api.service import (
+    PipelineApiError,
+    resolve_state_machine_arn,
+    start_pipeline_execution,
+)
 
 
 class ApiServiceTests(unittest.TestCase):
+    def test_start_pipeline_execution_rejects_youtube_without_transcript(self) -> None:
+        with self.assertRaisesRegex(
+            PipelineApiError, "AWS-side YouTube transcript fetch is disabled"
+        ):
+            start_pipeline_execution(
+                source_url="https://www.youtube.com/watch?v=abc123XYZ00",
+                state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
+                region="us-east-1",
+            )
+
     @patch("podcast_anything.api.service.boto3.session.Session")
     def test_start_pipeline_execution_uses_explicit_state_machine_arn(
         self, mock_session_cls: Mock
@@ -183,6 +197,16 @@ class ApiHandlerTests(unittest.TestCase):
         self.assertEqual(202, response["statusCode"])
         mock_start.assert_called_once()
         self.assertEqual("hello transcript", mock_start.call_args.kwargs["source_text"])
+
+    def test_start_execution_handler_rejects_youtube_without_transcript(self) -> None:
+        event = {
+            "body": json.dumps({"source_url": "https://www.youtube.com/watch?v=abc123XYZ00"})
+        }
+
+        response = handlers.start_execution_handler(event, None)
+
+        self.assertEqual(400, response["statusCode"])
+        self.assertIn("transcript", response["body"])
 
     def test_get_execution_handler_requires_execution_arn(self) -> None:
         response = handlers.get_execution_handler({}, None)

@@ -30,7 +30,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--transcript-file",
         default=None,
-        help="Optional path to transcript text file (bypasses YouTube transcript fetch in Lambda)",
+        help="Optional path to transcript text file (required for YouTube URLs)",
     )
     parser.add_argument(
         "--mode",

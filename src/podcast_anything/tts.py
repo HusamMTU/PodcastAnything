@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import html
+import logging
 import re
+import time
 
 import boto3
 
 
 class TTSError(RuntimeError):
     pass
+
+
+logger = logging.getLogger(__name__)
 
 
 def _split_text_for_polly(text: str, max_text_chars: int) -> list[str]:
@@ -74,9 +79,21 @@ def synthesize_speech(
     chunks = _split_text_for_polly(text, max_text_chars=max_text_chars)
     client = boto3.client("polly")
     audio_parts: list[bytes] = []
+    total_start = time.perf_counter()
+
+    logger.info(
+        "Starting Polly synthesis",
+        extra={
+            "chunk_count": len(chunks),
+            "voice_id": voice_id,
+            "text_type": text_type,
+            "output_format": output_format,
+        },
+    )
 
     for index, chunk in enumerate(chunks):
         request_text = _chunk_to_ssml(chunk) if text_type == "ssml" else chunk
+        chunk_start = time.perf_counter()
         response = client.synthesize_speech(
             Text=request_text,
             TextType=text_type,
@@ -87,6 +104,28 @@ def synthesize_speech(
         stream = response.get("AudioStream")
         if not stream:
             raise TTSError(f"Polly response missing AudioStream for chunk {index}.")
-        audio_parts.append(stream.read())
+        chunk_audio = stream.read()
+        audio_parts.append(chunk_audio)
+        chunk_elapsed_ms = int((time.perf_counter() - chunk_start) * 1000)
+        logger.info(
+            "Polly chunk synthesized",
+            extra={
+                "chunk_index": index,
+                "chunk_count": len(chunks),
+                "input_chars": len(chunk),
+                "audio_bytes": len(chunk_audio),
+                "elapsed_ms": chunk_elapsed_ms,
+            },
+        )
 
-    return b"".join(audio_parts)
+    combined_audio = b"".join(audio_parts)
+    total_elapsed_ms = int((time.perf_counter() - total_start) * 1000)
+    logger.info(
+        "Completed Polly synthesis",
+        extra={
+            "chunk_count": len(chunks),
+            "total_audio_bytes": len(combined_audio),
+            "elapsed_ms": total_elapsed_ms,
+        },
+    )
+    return combined_audio

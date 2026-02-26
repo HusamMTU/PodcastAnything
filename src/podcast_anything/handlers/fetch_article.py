@@ -1,4 +1,4 @@
-"""Lambda handler: fetch and extract source text (article or YouTube transcript)."""
+"""Lambda handler: fetch and extract source text."""
 
 from __future__ import annotations
 
@@ -20,18 +20,20 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
     settings = load_settings()
     bucket = pipeline_event.resolved_bucket(settings.bucket)
+    is_youtube_source = youtube.is_youtube_url(source_url)
 
     if pipeline_event.source_text:
         text = pipeline_event.source_text
-        source_type = "youtube" if youtube.is_youtube_url(source_url) else "text"
+        source_type = "youtube" if is_youtube_source else "text"
         logger.info(
             "Using provided source_text",
             extra={"job_id": job_id, "source_type": source_type},
         )
-    elif youtube.is_youtube_url(source_url):
-        text = youtube.fetch_transcript_text(source_url)
-        source_type = "youtube"
-        logger.info("Fetched YouTube transcript", extra={"job_id": job_id})
+    elif is_youtube_source:
+        raise ValueError(
+            "YouTube source_url requires caller-provided transcript text "
+            "(`source_text` / `transcript_text`). AWS-side YouTube transcript fetch is disabled."
+        )
     else:
         html = article.fetch_html(source_url)
         text = article.extract_text(html)

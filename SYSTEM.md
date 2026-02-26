@@ -3,11 +3,10 @@ Podcast Anything
 
 Goal
 Build an AWS-first system for turning inputs into podcast episodes.
-Current stage takes an article URL or YouTube video URL (transcript), rewrites it into a podcast-style script with an LLM, and generates podcast audio with TTS.
+Current stage takes an article URL or a YouTube video URL plus transcript text, rewrites it into a podcast-style script with an LLM, and generates podcast audio with TTS.
 
 Current Scope (Implemented)
-- Input: Public article URL or YouTube video URL (transcript-based)
-- Fallback input: caller-provided transcript/source text (`source_text`) when YouTube transcript fetch is blocked
+- Input: Public article URL, or YouTube video URL with caller-provided transcript/source text (`source_text`)
 - Output: Podcast script text + MP3 audio
 - Orchestration: Step Functions state machine
 - Execution helper script: `scripts/start_execution.py` (API-first, direct Step Functions fallback)
@@ -16,7 +15,7 @@ Current Scope (Implemented)
 
 High-Level Flow
 1. Submit an event with `source_url`; the service generates `job_id` automatically.
-2. Fetch and clean source text (article body or YouTube transcript).
+2. Fetch and clean source text (article body), or accept caller-provided source/transcript text.
 3. Rewrite source text into podcast script text with Bedrock.
 4. Generate audio from script with Polly (SSML + generative engine, with chunked synthesis).
 5. Store artifacts in S3 under the job prefix.
@@ -62,7 +61,7 @@ Script Metadata Contract (`script.json`)
 }
 
 Handler Contracts
-- `fetch_article`: reads `job_id`, `source_url`; fetches article text or YouTube transcript (or uses provided `source_text`); writes `article.txt`; returns `article_s3_key` and inferred `source_type`
+- `fetch_article`: reads `job_id`, `source_url`; fetches article text or uses provided `source_text`; writes `article.txt`; returns `article_s3_key` and inferred `source_type`
 - `rewrite_script`: reads `job_id`, `article_s3_key`; writes `script.txt` and `script.json`; returns `script_s3_key`
 - `generate_audio`: reads `job_id`, `script_s3_key`; writes `audio.mp3`; returns `audio_s3_key`
   - synthesis mode: SSML with chunking (`max_text_chars=1800`) to avoid Polly request length limits
@@ -79,7 +78,7 @@ Infrastructure (CDK)
 - Grants least-required service permissions for S3 + Bedrock + Polly
 
 Assumptions
-- Article is publicly accessible and text-heavy, or YouTube captions/transcripts are available
+- Article is publicly accessible and text-heavy, or caller can provide transcript text for video inputs
 - English content first
 - Single voice TTS in current phase
 

@@ -53,19 +53,12 @@ class FetchArticleHandlerTests(unittest.TestCase):
         self.assertEqual(expected_key, result["article_s3_key"])
         self.assertEqual(len("clean article text"), result["article_char_count"])
 
-    @patch("podcast_anything.handlers.fetch_article.put_text")
-    @patch(
-        "podcast_anything.handlers.fetch_article.youtube.fetch_transcript_text",
-        return_value="transcript text",
-    )
     @patch("podcast_anything.handlers.fetch_article.youtube.is_youtube_url", return_value=True)
     @patch("podcast_anything.handlers.fetch_article.load_settings")
-    def test_fetches_youtube_transcript_and_stores_text(
+    def test_rejects_youtube_url_without_provided_transcript(
         self,
         mock_settings: Mock,
         mock_is_youtube_url: Mock,
-        mock_fetch_transcript: Mock,
-        mock_put_text: Mock,
     ) -> None:
         mock_settings.return_value = Settings(
             bucket="default-bucket",
@@ -78,13 +71,10 @@ class FetchArticleHandlerTests(unittest.TestCase):
             "source_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         }
 
-        result = fetch_article.handler(event, None)
+        with self.assertRaisesRegex(ValueError, "AWS-side YouTube transcript fetch is disabled"):
+            fetch_article.handler(event, None)
 
-        expected_key = "jobs/job-yt-1/article.txt"
         mock_is_youtube_url.assert_called_once_with(event["source_url"])
-        mock_fetch_transcript.assert_called_once_with(event["source_url"])
-        mock_put_text.assert_called_once_with("default-bucket", expected_key, "transcript text")
-        self.assertEqual("youtube", result["source_type"])
 
     @patch("podcast_anything.handlers.fetch_article.put_text")
     @patch("podcast_anything.handlers.fetch_article.youtube.fetch_transcript_text")

@@ -27,7 +27,7 @@ scripts/test.sh
 
 - `test_requires_job_id_and_source_url`: `fetch_article.handler` rejects missing required input fields.
 - `test_fetches_extracts_and_stores_article`: `fetch_article.handler` fetches, extracts, stores text, and returns expected output keys.
-- `test_fetches_youtube_transcript_and_stores_text`: `fetch_article.handler` detects YouTube URLs, fetches transcript text, and stores it in S3.
+- `test_rejects_youtube_url_without_provided_transcript`: `fetch_article.handler` rejects YouTube URLs when no transcript text is provided.
 - `test_requires_job_id_and_article_s3_key`: `rewrite_script.handler` rejects missing required input fields.
 - `test_reads_article_rewrites_and_stores_outputs`: `rewrite_script.handler` builds prompt, calls Bedrock helper, stores script and metadata.
 - `test_requires_job_id_and_script_s3_key`: `generate_audio.handler` rejects missing required input fields.
@@ -53,12 +53,14 @@ scripts/test.sh
 
 - `test_start_pipeline_execution_uses_explicit_state_machine_arn`: starts Step Functions execution with a provided ARN.
 - `test_start_pipeline_execution_includes_source_text_when_provided`: includes caller-provided source/transcript text in Step Functions input.
+- `test_start_pipeline_execution_rejects_youtube_without_transcript`: rejects YouTube URLs unless transcript text is provided by the caller.
 - `test_start_pipeline_execution_resolves_state_machine_arn_from_stack`: resolves ARN from CloudFormation outputs before starting execution.
 - `test_resolve_state_machine_arn_raises_when_output_missing`: fails fast when `PipelineStateMachineArn` output is absent.
 - `test_start_pipeline_execution_generates_job_id_when_missing`: auto-generates a unique job ID when none is provided.
 - `test_start_execution_handler_rejects_invalid_json`: returns `400` for malformed JSON request bodies.
 - `test_start_execution_handler_returns_accepted`: returns `202` and delegates execution start to service layer.
 - `test_start_execution_handler_accepts_transcript_text_alias`: accepts `transcript_text` and forwards it as `source_text`.
+- `test_start_execution_handler_rejects_youtube_without_transcript`: returns `400` when a YouTube URL is submitted without transcript text.
 - `test_get_execution_handler_requires_execution_arn`: returns `400` when execution identifier is missing.
 - `test_get_execution_handler_returns_status`: returns `200` with execution status payload from service layer.
 
