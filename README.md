@@ -72,7 +72,7 @@ flowchart LR
   subgraph CLIENT[Client Side]
     U[User]
     SE[scripts/start_execution.py]
-    CC[Local caption fetch\n(YouTube only, in CLI)]
+    CC["Local caption fetch<br/>(YouTube only, in CLI)"]
     U --> SE
     SE -->|YouTube URL| CC
   end
@@ -92,14 +92,14 @@ flowchart LR
   U -->|status request| APIGW
   APIGW -->|status response| U
 
-  SAE --> SFN[Step Functions\nPipelineStateMachine]
+  SAE --> SFN["Step Functions<br/>PipelineStateMachine"]
   GES -->|DescribeExecution| SFN
   SFN -->|execution status| GES
 
   subgraph PIPE[State Machine Execution Order]
-    F[FetchArticleStep\nLambda: FetchArticleFn\n(fetch article or persist provided transcript)]
-    R[RewriteScriptStep\nLambda: RewriteScriptFn]
-    G[GenerateAudioStep\nLambda: GenerateAudioFn]
+    F["FetchArticleStep<br/>Lambda: FetchArticleFn<br/>(fetch article or persist provided transcript)"]
+    R["RewriteScriptStep<br/>Lambda: RewriteScriptFn"]
+    G["GenerateAudioStep<br/>Lambda: GenerateAudioFn"]
     F -->|event + article_s3_key| R
     R -->|event + script_s3_key| G
   end
