@@ -68,21 +68,36 @@ Core AWS services:
 - Polly
 
 ```mermaid
-flowchart TD
-  U[User] --> SE[scripts/start_execution.py]
-  SE -->|Article URL| API[API Gateway HTTP API]
-  SE -->|YouTube URL| CC[Local caption fetch]
-  CC -->|source_url + transcript_text| API
+flowchart LR
+  subgraph CLIENT[Client Side]
+    U[User]
+    SE[scripts/start_execution.py]
+    CC[Local caption fetch\n(YouTube only, in CLI)]
+    U --> SE
+    SE -->|YouTube URL| CC
+  end
 
-  API --> SAE[Lambda: StartExecutionApiFn]
-  API --> GES[Lambda: GetExecutionApiFn]
-  API -->|status response| U
+  subgraph API[HTTP API]
+    APIGW[API Gateway HTTP API]
+    POSTX[POST /executions]
+    GETX[GET /executions]
+    SAE[Lambda: StartExecutionApiFn]
+    GES[Lambda: GetExecutionApiFn]
+    APIGW --> POSTX --> SAE
+    APIGW --> GETX --> GES
+  end
+
+  SE -->|Article URL| APIGW
+  CC -->|source_url + transcript_text| APIGW
+  U -->|status request| APIGW
+  APIGW -->|status response| U
+
   SAE --> SFN[Step Functions\nPipelineStateMachine]
   GES -->|DescribeExecution| SFN
   SFN -->|execution status| GES
 
   subgraph PIPE[State Machine Execution Order]
-    F[FetchArticleStep\nLambda: FetchArticleFn]
+    F[FetchArticleStep\nLambda: FetchArticleFn\n(fetch article or persist provided transcript)]
     R[RewriteScriptStep\nLambda: RewriteScriptFn]
     G[GenerateAudioStep\nLambda: GenerateAudioFn]
     F -->|event + article_s3_key| R
@@ -90,13 +105,12 @@ flowchart TD
   end
 
   SFN -->|invokes first step| F
-  NOTE[YouTube captions are fetched locally in CLI,\nnot inside Lambda] -.-> F
-  F -->|write normalized source text to source.txt| S3[(S3 ArtifactsBucket)]
+  F -->|write source.txt| S3[(S3 ArtifactsBucket)]
   S3 -->|read source.txt| R
   R -->|write script.txt + script.json| S3
+  R -->|InvokeModel| BR[Bedrock Runtime]
   S3 -->|read script.txt| G
   G -->|write audio.mp3| S3
-  R -->|InvokeModel| BR[Bedrock Runtime]
   G -->|SynthesizeSpeech| P[Amazon Polly]
 ```
 
