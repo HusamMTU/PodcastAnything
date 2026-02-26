@@ -67,6 +67,36 @@ Core AWS services:
 - Bedrock Runtime
 - Polly
 
+```mermaid
+flowchart TD
+  U[User] --> SE[scripts/start_execution.py]
+  SE -->|Article URL| API[API Gateway HTTP API]
+  SE -->|YouTube URL| CC[Local caption fetch]
+  CC -->|source_url + transcript_text| API
+
+  API --> SAE[Lambda: StartExecutionApiFn]
+  API --> GES[Lambda: GetExecutionApiFn]
+  SAE --> SFN[Step Functions\nPipelineStateMachine]
+  GES -->|DescribeExecution| SFN
+
+  subgraph PIPE[State Machine Execution Order]
+    F[FetchArticleStep\nLambda: FetchArticleFn]
+    R[RewriteScriptStep\nLambda: RewriteScriptFn]
+    G[GenerateAudioStep\nLambda: GenerateAudioFn]
+    F -->|event + article_s3_key| R
+    R -->|event + script_s3_key| G
+  end
+
+  SFN -->|invokes first step| F
+  F -->|write normalized source text to source.txt| S3[(S3 ArtifactsBucket)]
+  R -->|read source.txt| S3
+  R -->|write script.txt + script.json| S3
+  G -->|read script.txt| S3
+  G -->|write audio.mp3| S3
+  R -->|InvokeModel| BR[Bedrock Runtime]
+  G -->|SynthesizeSpeech| P[Amazon Polly]
+```
+
 More details:
 - `SYSTEM.md`
 - `infra/INFRA.md`
