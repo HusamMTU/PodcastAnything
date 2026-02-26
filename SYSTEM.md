@@ -9,7 +9,7 @@ Current Scope (Implemented)
 - Input: Public article URL, or YouTube video URL with caller-provided transcript/source text (`source_text`)
 - Output: Podcast script text + MP3 audio
 - Orchestration: Step Functions state machine
-- Execution helper script: `scripts/start_execution.py` (API-first, direct Step Functions fallback)
+- Execution helper script: `scripts/start_execution.py` (API-first, direct Step Functions fallback; auto-fetches YouTube captions locally when possible)
 - API endpoints: `POST /executions` and `GET /executions`
 - Not implemented yet: DynamoDB job tracking
 

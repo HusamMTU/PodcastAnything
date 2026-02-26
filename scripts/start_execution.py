@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
@@ -17,6 +18,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 from podcast_anything.api.service import PipelineApiError, start_pipeline_execution
+from podcast_anything.youtube import YouTubeTranscriptError, fetch_transcript_text, is_youtube_url
 
 
 def _parse_args() -> argparse.Namespace:
@@ -30,7 +32,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--transcript-file",
         default=None,
-        help="Optional path to transcript text file (required for YouTube URLs)",
+        help="Optional path to transcript text file (overrides automatic local caption fetch)",
     )
     parser.add_argument(
         "--mode",
@@ -94,6 +96,30 @@ def _read_transcript_file(path: str | None) -> str | None:
     return text
 
 
+def _resolve_source_text(*, source_url: str, transcript_file: str | None) -> str | None:
+    file_text = _read_transcript_file(transcript_file)
+    if file_text is not None:
+        return file_text
+
+    if not is_youtube_url(source_url):
+        return None
+
+    print("Fetching YouTube captions locally...", file=sys.stderr)
+    try:
+        transcript_text = fetch_transcript_text(source_url)
+    except YouTubeTranscriptError as exc:
+        raise RuntimeError(
+            "Could not fetch YouTube captions locally. The video may not have captions, "
+            "captions may be disabled/restricted, or YouTube may be rate-limiting/blocking "
+            "your network. Retry later or provide a local transcript with "
+            "`--transcript-file <path>`.\n"
+            f"Details: {exc}"
+        ) from exc
+
+    print(f"Fetched YouTube captions locally ({len(transcript_text)} chars).", file=sys.stderr)
+    return transcript_text
+
+
 def _post_execution(
     *,
     api_url: str,
@@ -136,7 +162,10 @@ def main() -> None:
     args = _parse_args()
 
     try:
-        source_text = _read_transcript_file(args.transcript_file)
+        source_text = _resolve_source_text(
+            source_url=args.source_url,
+            transcript_file=args.transcript_file,
+        )
         if args.mode == "api":
             api_url = args.api_url or _resolve_stack_output(
                 region=args.region,

@@ -64,6 +64,13 @@ scripts/test.sh
 - `test_get_execution_handler_requires_execution_arn`: returns `400` when execution identifier is missing.
 - `test_get_execution_handler_returns_status`: returns `200` with execution status payload from service layer.
 
+## `tests/test_start_execution_script.py`
+
+- `test_returns_none_for_non_youtube_without_transcript_file`: leaves article URLs unchanged when no transcript file is provided.
+- `test_uses_transcript_file_before_youtube_fetch`: prefers `--transcript-file` content over automatic YouTube caption fetch.
+- `test_auto_fetches_youtube_transcript_locally`: auto-fetches captions locally for YouTube URLs before calling AWS.
+- `test_returns_clear_error_when_local_youtube_fetch_fails`: returns an actionable local caption fetch error with `--transcript-file` fallback guidance.
+
 ## `tests/test_youtube.py`
 
 - `test_detects_supported_youtube_hosts`: detects supported YouTube URL hosts.

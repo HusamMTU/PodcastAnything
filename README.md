@@ -96,14 +96,24 @@ Article example:
 python scripts/start_execution.py "https://example.com/article"
 ```
 
-### YouTube Input (Local Transcript Required)
+### YouTube Input (URL Only From User)
 
-AWS-side YouTube transcript fetching is intentionally disabled. For YouTube inputs:
+AWS-side YouTube transcript fetching is intentionally disabled.
+When you pass a YouTube URL to `scripts/start_execution.py`, the script tries to fetch captions locally on your machine first, then sends the transcript text to AWS.
+
+YouTube example (automatic local caption fetch):
+
+```bash
+python scripts/start_execution.py "https://www.youtube.com/watch?v=7eNey0TN2pw"
+```
+
+If local caption fetch fails (for example captions are unavailable or restricted), use a local transcript file:
+
 1. Fetch captions locally on your machine.
 2. Save/export as plain text (`.txt`).
 3. Pass that file with `--transcript-file`.
 
-Local helper (uses `youtube_transcript_api` on your machine):
+Optional helper (uses `youtube_transcript_api` on your machine):
 
 ```bash
 python scripts/fetch_youtube_transcript.py "https://www.youtube.com/watch?v=7eNey0TN2pw"
