@@ -1,57 +1,87 @@
 # Podcast Anything
 
-This repository turns source content into a podcast.
-I like learning by listening, and sometimes I want a podcast on a specific topic but cannot find one quickly.
-Think of this as podcast-as-a-service for learning.
+Turn source content into a podcast-ready script and audio file.
 
-Why "anything"? Future inputs can include:
-- a meeting transcript (or multiple meetings)
-- an image of a system design drawn on a whiteboard
-- a YouTube video
-- another podcast (or two, or three)
-- and more
+Current stage supports:
+- public article URLs
+- YouTube URLs (captions fetched locally by the CLI, then sent to AWS)
 
-In the current stage, the system takes a public article URL or a YouTube video URL plus transcript text and generates a single-speaker podcast:
-- a podcast-style script (`script.txt`)
-- an audio file (`audio.mp3`)
+The pipeline rewrites source content into a single-speaker podcast script with Bedrock, then generates audio with Amazon Polly.
 
-Later stages will support additional source types for curation and multi-speaker podcast formats.
+## Table of Contents
 
-## What Is Implemented
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [YouTube Flow](#youtube-flow)
+- [API Endpoints](#api-endpoints)
+- [Development](#development)
+- [Testing](#testing)
+- [Infrastructure (CDK)](#infrastructure-cdk)
+- [Troubleshooting](#troubleshooting)
+- [Security Notes](#security-notes)
 
-1. Fetch source text from an article page, or accept caller-provided transcript/source text.
-2. Rewrite the source text into a podcast-style script via Bedrock.
-3. Synthesize the script into MP3 via Polly (SSML + generative engine).
-4. Store artifacts in S3 under `jobs/<job_id>/`.
+## Overview
 
-Current orchestration:
-- AWS Step Functions state machine: `fetch -> rewrite -> generate`
-- Trigger helper: `scripts/start_execution.py`
+This repo is an AWS-first pipeline for turning source material into a podcast.
 
-## Repo Structure
+Current output:
+- `script.txt` (podcast-style script)
+- `audio.mp3` (single-speaker podcast audio)
 
-- `src/podcast_anything/` Runtime package
-- `src/podcast_anything/handlers/` Lambda handlers
-- `src/podcast_anything/api/` API service + API Gateway Lambda handlers
-- `src/podcast_anything/event_schema.py` Typed event schema and stage validation
-- `src/podcast_anything/youtube.py` YouTube URL parsing + local transcript fetch helpers
-- `scripts/start_execution.py` Helper script to start Step Functions executions
-- `scripts/fetch_youtube_transcript.py` Local helper to fetch YouTube transcripts into `.txt`
-- `infra/` CDK app (Python) for AWS resources
-- `infra/INFRA.md` Infra resource breakdown and architecture sketch
-- `SYSTEM.md` System contracts and architecture notes
+Future inputs can include:
+- meeting transcripts
+- images/whiteboard sketches
+- other podcasts
+- multi-source curation inputs
 
-## Prerequisites
+## Features
+
+- Step Functions orchestration: `fetch -> rewrite -> generate`
+- Lambda handlers for source fetch, script rewrite, and audio generation
+- API Gateway HTTP API to start executions and query status
+- API-first local CLI (`scripts/start_execution.py`)
+- YouTube URL support without AWS-side caption scraping
+  - CLI fetches captions locally when possible
+  - backend receives transcript text
+- Polly SSML + `generative` engine with chunked synthesis
+- CDK (Python) infrastructure
+- Unit tests + GitHub Actions CI + Ruff linting
+
+## Architecture
+
+High-level flow:
+
+1. Start execution via `scripts/start_execution.py` or `POST /executions`.
+2. Fetch normalized source text and store it in S3 as `source.txt`.
+3. Rewrite source text into a podcast script with Bedrock.
+4. Generate audio with Polly and store `audio.mp3`.
+5. Query execution status with `GET /executions`.
+
+Core AWS services:
+- S3
+- Lambda
+- Step Functions
+- API Gateway (HTTP API)
+- Bedrock Runtime
+- Polly
+
+More details:
+- `SYSTEM.md`
+- `infra/INFRA.md`
+
+## Quick Start
+
+### Prerequisites
 
 - Python 3.10+
-- `uv` installed
+- `uv`
 - AWS credentials configured for CLI/boto3
-- Docker running (required for CDK layer bundling)
-- CDK CLI installed (`brew install aws-cdk` or `npm i -g aws-cdk`)
+- Docker running (for CDK Lambda layer bundling)
+- CDK CLI (`brew install aws-cdk` or `npm i -g aws-cdk`)
 
-## Setup
-
-Create the environment and install package + dependencies:
+### Setup
 
 ```bash
 uv venv .venv
@@ -59,7 +89,7 @@ source .venv/bin/activate
 uv sync --extra infra
 ```
 
-If you are not using `uv`, use:
+If not using `uv`:
 
 ```bash
 python -m venv .venv
@@ -68,96 +98,91 @@ pip install -r requirements.txt
 pip install -r infra/requirements.txt
 ```
 
-Load `.env` variables into your shell:
+Load environment variables:
 
 ```bash
 set -a; source .env; set +a
 ```
 
-## Required Environment Variables
+### Required Environment Variables
 
-- `MP_BUCKET`: S3 bucket name for artifacts (globally unique; CDK creates this exact bucket name)
-- `BEDROCK_MODEL_ID`: Bedrock model ID (Anthropic and Nova model families supported)
+- `MP_BUCKET`: S3 bucket for artifacts (must be globally unique)
+- `BEDROCK_MODEL_ID`: Bedrock model ID (Nova or Anthropic family supported)
 
 Optional:
-- `AWS_REGION`: defaults to `us-east-1`
-- `POLLY_VOICE_ID`: defaults to `Joanna` (must support Polly generative engine in your region)
+- `AWS_REGION` (default `us-east-1`)
+- `POLLY_VOICE_ID` (default `Joanna`, must support Polly `generative` engine in your region)
 
-## Run The Pipeline
+### Deploy Infrastructure
 
-Before starting executions, make sure the AWS infrastructure is already deployed (`PodcastAnythingStack`), including the Step Functions state machine and S3 bucket.
-If it is not deployed yet, run the steps in `Deploy Infrastructure With CDK` first.
+```bash
+cd infra
+cdk bootstrap
+cdk synth
+cdk deploy PodcastAnythingStack
+```
 
-The helper script uses the HTTP API by default (`POST /executions`).
+### Run One Pipeline Execution
 
-Article example:
+Article URL:
 
 ```bash
 python scripts/start_execution.py "https://example.com/article"
 ```
 
-### YouTube Input (URL Only From User)
+The CLI uses the deployed HTTP API (`POST /executions`) by default.
 
-AWS-side YouTube transcript fetching is intentionally disabled.
-When you pass a YouTube URL to `scripts/start_execution.py`, the script tries to fetch captions locally on your machine first, then sends the transcript text to AWS.
+## YouTube Flow
 
-YouTube example (automatic local caption fetch):
+AWS-side YouTube caption fetching is intentionally disabled.
+
+For a YouTube URL, `scripts/start_execution.py` will:
+- try to fetch captions locally on your machine
+- send transcript text to the API/backend
+- start the Step Functions execution
+
+URL-only example:
 
 ```bash
 python scripts/start_execution.py "https://www.youtube.com/watch?v=7eNey0TN2pw"
 ```
 
-If local caption fetch fails (for example captions are unavailable or restricted), use a local transcript file:
-
-1. Fetch captions locally on your machine.
-2. Save/export as plain text (`.txt`).
-3. Pass that file with `--transcript-file`.
-
-Optional helper (uses `youtube_transcript_api` on your machine):
-
-```bash
-python scripts/fetch_youtube_transcript.py "https://www.youtube.com/watch?v=7eNey0TN2pw"
-```
-
-This writes a file like `youtube-7eNey0TN2pw-transcript.txt`.
-
-Run the pipeline using the local transcript:
+If local caption fetch fails (captions unavailable/restricted or local network blocked), use a transcript file:
 
 ```bash
 python scripts/start_execution.py "https://www.youtube.com/watch?v=7eNey0TN2pw" \
   --transcript-file ./my_transcript.txt
 ```
 
-You can also use `yt-dlp` locally if it works better in your environment, then pass the resulting text file.
+Optional helper to fetch/save captions locally:
 
-The pipeline writes these artifacts to S3:
-- `jobs/<job_id>/source.txt`
-- `jobs/<job_id>/script.txt`
-- `jobs/<job_id>/script.json`
-- `jobs/<job_id>/audio.mp3`
+```bash
+python scripts/fetch_youtube_transcript.py "https://www.youtube.com/watch?v=7eNey0TN2pw"
+```
 
-`source.txt` stores normalized source text for both article and YouTube transcript inputs.
-
-Audio synthesis details:
-- Handler uses SSML mode (`TextType=ssml`) with `<prosody>` and pause tags for better pacing.
-- Polly engine is set to `generative`.
-- Long scripts are chunked automatically before synthesis and concatenated into one MP3 output.
+You can also use `yt-dlp` locally and pass the resulting plain-text transcript with `--transcript-file`.
 
 ## API Endpoints
 
-The CDK stack now deploys an HTTP API with these routes:
-
+The stack deploys an HTTP API with:
 - `POST /executions`
-  - Starts a Step Functions execution
-  - Body fields:
-    - `source_url` (required): public article URL or YouTube video URL
-    - `style` (optional, default `podcast`)
-    - `source_text` or `transcript_text` (required for YouTube URLs; optional for other sources)
-    - `state_machine_arn` (optional override)
 - `GET /executions?execution_arn=...`
-  - Returns execution status and parsed input/output (when available)
 
-Get API URL from stack outputs:
+### `POST /executions`
+
+Starts a Step Functions execution.
+
+Body fields:
+- `source_url` (required): article URL or YouTube URL
+- `style` (optional, default `podcast`)
+- `source_text` or `transcript_text` (required for YouTube URLs; optional for other sources)
+- `state_machine_arn` (optional override)
+
+### `GET /executions`
+
+Returns execution status and parsed input/output (when available).
+
+### Resolve API URL
 
 ```bash
 aws cloudformation describe-stacks \
@@ -166,7 +191,7 @@ aws cloudformation describe-stacks \
   --output text
 ```
 
-Examples:
+### API Examples
 
 ```bash
 API_URL="https://<your-api-id>.execute-api.us-east-1.amazonaws.com"
@@ -186,34 +211,76 @@ curl -sS -X POST "$API_URL/executions" \
 curl -sS "$API_URL/executions?execution_arn=<execution-arn>"
 ```
 
-## Run Tests
+## Development
+
+### Repo Structure
+
+- `src/podcast_anything/` runtime package
+- `src/podcast_anything/handlers/` Lambda handlers
+- `src/podcast_anything/api/` API service + API Gateway Lambda handlers
+- `src/podcast_anything/event_schema.py` typed pipeline event schema
+- `src/podcast_anything/youtube.py` YouTube URL parsing + local transcript helpers
+- `scripts/start_execution.py` local execution launcher (API-first)
+- `scripts/fetch_youtube_transcript.py` optional local transcript helper
+- `infra/` CDK app (Python)
+- `infra/INFRA.md` infra breakdown + architecture sketch
+- `SYSTEM.md` system contracts / architecture notes
+
+### Artifacts (S3)
+
+The pipeline stores artifacts under `jobs/<job_id>/`:
+- `jobs/<job_id>/source.txt`
+- `jobs/<job_id>/script.txt`
+- `jobs/<job_id>/script.json`
+- `jobs/<job_id>/audio.mp3`
+
+`source.txt` stores normalized source text for both article and YouTube transcript inputs.
+
+### Audio Generation Notes
+
+- Polly engine: `generative`
+- Polly text type: `ssml`
+- Long scripts are chunked before synthesis and concatenated into one MP3
+
+## Testing
+
+Run the test suite:
 
 ```bash
 scripts/test.sh
 ```
 
-Test catalog:
+Test inventory:
 - `tests/TESTS.md`
 
-## Deploy Infrastructure With CDK
+CI:
+- GitHub Actions runs tests + CDK synth on PRs and pushes to `main`
+- Ruff runs in CI for lint checks
 
-```bash
-cd infra
-cdk bootstrap
-cdk synth
-cdk deploy PodcastAnythingStack
-```
+## Infrastructure (CDK)
 
-Stack resources:
+Stack name:
+- `PodcastAnythingStack`
+
+Primary resources:
 - S3 artifacts bucket
 - Lambda dependency layer (`requests`, `beautifulsoup4`)
 - Lambda functions: `FetchArticleFn`, `RewriteScriptFn`, `GenerateAudioFn`
 - API Lambda functions: `StartExecutionApiFn`, `GetExecutionApiFn`
 - Step Functions state machine: `PipelineStateMachine`
-- HTTP API Gateway routes:
-  - `POST /executions`
-  - `GET /executions`
-- IAM policies for S3, Bedrock invoke, and Polly synthesize
+- HTTP API Gateway routes: `POST /executions`, `GET /executions`
+- IAM policies for S3, Bedrock, Polly, and Step Functions status/start calls
+
+Useful commands:
+
+```bash
+cd infra
+cdk synth PodcastAnythingStack
+cdk deploy PodcastAnythingStack
+cdk destroy PodcastAnythingStack
+```
+
+See `infra/INFRA.md` for details and the architecture sketch.
 
 ## Troubleshooting
 
@@ -222,22 +289,23 @@ Stack resources:
 - `You must specify a region`
   - Set `AWS_REGION` in `.env` and load it, or pass `--region us-east-1` to AWS CLI commands.
 - `docker: Cannot connect to the Docker daemon`
-  - Start Docker Desktop before running `cdk synth` or `cdk deploy` (the Lambda layer bundling uses Docker).
+  - Start Docker Desktop before `cdk synth` / `cdk deploy` (Lambda layer bundling uses Docker).
 - Bedrock `AccessDeniedException` or model not available
-  - Confirm model access is enabled for your account/region and that `BEDROCK_MODEL_ID` is valid in that region.
+  - Confirm model access is enabled for your account/region and `BEDROCK_MODEL_ID` is valid in that region.
 - YouTube execution start fails with transcript-related validation
-  - AWS-side YouTube transcript fetch is disabled.
-  - Provide transcript text via API (`transcript_text` / `source_text`) or use `scripts/start_execution.py --transcript-file ...`.
+  - The backend requires transcript text for YouTube URLs.
+  - Use `scripts/start_execution.py` (it auto-fetches locally) or pass `transcript_text` / `source_text` directly to the API.
+- Local YouTube caption fetch fails in `scripts/start_execution.py`
+  - The video may not have captions, captions may be restricted, or YouTube may be rate-limiting/blocking your network.
+  - Retry later or use `--transcript-file`.
 - S3 bucket creation fails with `BucketAlreadyExists`
   - Update `MP_BUCKET` to a globally unique name (for example include account ID + region).
 - CDK warns it cannot assume bootstrap roles but proceeds
-  - This is usually non-fatal if your current credentials still have deploy permissions.
-- Step Functions execution fails because of input validation
-  - Provide `source_url` for API start requests.
+  - Usually non-fatal if your current credentials still have deploy permissions.
 - Polly fails with `EngineNotSupportedException` or voice errors
-  - Pick a `POLLY_VOICE_ID` that supports the `generative` engine in your configured region.
+  - Pick a `POLLY_VOICE_ID` that supports Polly `generative` engine in the configured region.
 
-## Security Note
+## Security Notes
 
 - Keep `.env` out of version control.
 - Do not commit long-lived AWS access keys.
