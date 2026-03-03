@@ -113,6 +113,7 @@ class PodcastAnythingStack(cdk.Stack):
             memory_size=2048,
             timeout=cdk.Duration.minutes(3),
             environment=common_env,
+            layers=[deps_layer],
         )
 
         bucket.grant_read_write(fetch_article_fn)
