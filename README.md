@@ -78,7 +78,7 @@ flowchart LR
   SFN --> F["Fetch -> Rewrite -> Generate<br/>Lambda Steps"]
   F -->|read/write artifacts| S3[(S3 ArtifactsBucket)]
   F -->|LLM calls| BR[Bedrock Runtime]
-  F -->|TTS calls| T[TTS Provider (Polly or ElevenLabs)]
+  F -->|TTS calls| T["TTS Provider<br/>Polly or ElevenLabs"]
 ```
 
 More details:
