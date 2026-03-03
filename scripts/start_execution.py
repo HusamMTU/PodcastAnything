@@ -30,6 +30,12 @@ def _parse_args() -> argparse.Namespace:
         help="Podcast style label (default: podcast)",
     )
     parser.add_argument(
+        "--script-mode",
+        choices=["single", "duo"],
+        default="single",
+        help="Script format mode: single host or two-host dialogue (default: single)",
+    )
+    parser.add_argument(
         "--transcript-file",
         default=None,
         help="Optional path to transcript text file (overrides automatic local caption fetch)",
@@ -126,9 +132,10 @@ def _post_execution(
     source_url: str,
     job_id: str | None,
     style: str,
+    script_mode: str,
     source_text: str | None,
 ) -> dict:
-    payload = {"source_url": source_url, "style": style}
+    payload = {"source_url": source_url, "style": style, "script_mode": script_mode}
     if job_id:
         payload["job_id"] = job_id
     if source_text:
@@ -177,6 +184,7 @@ def main() -> None:
                 source_url=args.source_url,
                 job_id=None,
                 style=args.style,
+                script_mode=args.script_mode,
                 source_text=source_text,
             )
         else:
@@ -185,6 +193,7 @@ def main() -> None:
                 source_text=source_text,
                 job_id=None,
                 style=args.style,
+                script_mode=args.script_mode,
                 region=args.region,
                 stack_name=args.stack_name,
                 state_machine_arn=args.state_machine_arn,

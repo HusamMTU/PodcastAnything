@@ -6,7 +6,7 @@ Current stage supports:
 - public article URLs
 - YouTube URLs (captions fetched locally by the CLI, then sent to AWS)
 
-The pipeline rewrites source content into a single-speaker podcast script with Bedrock, then generates audio with a configurable TTS provider (`polly` or `elevenlabs`).
+The pipeline rewrites source content into a podcast script with Bedrock (`single` host or `duo` dialogue), then generates audio with a configurable TTS provider (`polly` or `elevenlabs`).
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@ The pipeline rewrites source content into a single-speaker podcast script with B
 This repo is an AWS-first pipeline for turning source material into a podcast.
 
 Current output:
-- `script.txt` (podcast-style script)
+- `script.txt` (podcast script in `single` or `duo` mode)
 - `audio.mp3` (single-speaker podcast audio)
 
 Future inputs can include:
@@ -45,6 +45,7 @@ Future inputs can include:
 - YouTube URL support without AWS-side caption scraping
   - CLI fetches captions locally when possible
   - backend receives transcript text
+- Script mode selection: `single` host or `duo` dialogue (`HOST_A` / `HOST_B`)
 - Configurable TTS provider: Polly (SSML + `generative` engine) or ElevenLabs HTTP API
 - CDK (Python) infrastructure
 - Unit tests + GitHub Actions CI + Ruff linting
@@ -148,6 +149,12 @@ Article URL:
 python scripts/start_execution.py "https://example.com/article"
 ```
 
+Duo-script mode example:
+
+```bash
+python scripts/start_execution.py "https://example.com/article" --script-mode duo
+```
+
 The CLI uses the deployed HTTP API (`POST /executions`) by default.
 
 ## YouTube Flow
@@ -193,6 +200,7 @@ Starts a Step Functions execution.
 Body fields:
 - `source_url` (required): article URL or YouTube URL
 - `style` (optional, default `podcast`)
+- `script_mode` (optional, default `single`; allowed: `single`, `duo`)
 - `source_text` or `transcript_text` (required for YouTube URLs; optional for other sources)
 - `state_machine_arn` (optional override)
 
@@ -216,7 +224,7 @@ API_URL="https://<your-api-id>.execute-api.us-east-1.amazonaws.com"
 
 curl -sS -X POST "$API_URL/executions" \
   -H "content-type: application/json" \
-  -d '{"source_url":"https://en.wikipedia.org/wiki/Vision_transformer","style":"podcast"}'
+  -d '{"source_url":"https://en.wikipedia.org/wiki/Vision_transformer","style":"podcast","script_mode":"duo"}'
 ```
 
 ```bash
@@ -253,6 +261,12 @@ The pipeline stores artifacts under `jobs/<job_id>/`:
 - `jobs/<job_id>/audio.mp3`
 
 `source.txt` stores normalized source text for both article and YouTube transcript inputs.
+
+### Script Modes
+
+- `single` (default): traditional single-host script.
+- `duo`: two-host dialogue script with plain text lines prefixed by `HOST_A:` or `HOST_B:`.
+- Current limitation: audio generation is still single-voice in this phase, even for `duo` scripts.
 
 ### Audio Generation Notes
 

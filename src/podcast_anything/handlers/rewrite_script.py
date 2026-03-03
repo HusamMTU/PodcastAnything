@@ -27,6 +27,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         title=pipeline_event.title,
         style=pipeline_event.style,
         source_type=pipeline_event.source_type,
+        script_mode=pipeline_event.script_mode,
     )
 
     script_text = call_bedrock(settings.bedrock_model_id, prompt)
@@ -44,6 +45,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             "source_type": pipeline_event.source_type,
             "title": pipeline_event.title,
             "style": pipeline_event.style,
+            "script_mode": pipeline_event.script_mode,
             "model_id": settings.bedrock_model_id,
             "script_s3_key": script_key,
         },

@@ -3,7 +3,7 @@ Podcast Anything
 
 Goal
 Build an AWS-first system for turning inputs into podcast episodes.
-Current stage takes an article URL or a YouTube video URL plus transcript text, rewrites it into a podcast-style script with an LLM, and generates podcast audio with TTS.
+Current stage takes an article URL or a YouTube video URL plus transcript text, rewrites it into a podcast script with an LLM (`single` or `duo` mode), and generates podcast audio with TTS.
 
 Current Scope (Implemented)
 - Input: Public article URL, or YouTube video URL with caller-provided transcript/source text (`source_text`)
@@ -47,6 +47,7 @@ Input Event Contract
   "source_text": "optional raw source/transcript text",
   "title": "optional title",
   "style": "podcast",
+  "script_mode": "single | duo (default: single)",
   "voice_id": "Joanna",
   "bucket": "optional-bucket-override"
 }
@@ -57,6 +58,7 @@ Script Metadata Contract (`script.json`)
   "source_url": "https://example.com/article",
   "title": "optional title",
   "style": "podcast",
+  "script_mode": "single | duo",
   "model_id": "bedrock-model-id",
   "script_s3_key": "jobs/<job_id>/script.txt"
 }
@@ -64,6 +66,9 @@ Script Metadata Contract (`script.json`)
 Handler Contracts
 - `fetch_article`: reads `job_id`, `source_url`; fetches article text or uses provided `source_text`; writes `source.txt`; returns `article_s3_key` and inferred `source_type`
 - `rewrite_script`: reads `job_id`, `article_s3_key`; writes `script.txt` and `script.json`; returns `script_s3_key`
+  - script mode:
+    - `single`: single-host narrative script
+    - `duo`: two-host dialogue with `HOST_A:` / `HOST_B:` line labels
 - `generate_audio`: reads `job_id`, `script_s3_key`; writes `audio.mp3`; returns `audio_s3_key`
   - synthesis mode by provider:
     - Polly: SSML with chunking (`max_text_chars=1800`) to avoid Polly request length limits
@@ -84,7 +89,7 @@ Infrastructure (CDK)
 Assumptions
 - Article is publicly accessible and text-heavy, or caller can provide transcript text for video inputs
 - English content first
-- Single voice TTS in current phase
+- Script output can be `single` or `duo`; TTS is still single voice in current phase
 
 Planned Next
 - DynamoDB status tracking

@@ -18,6 +18,9 @@ class PipelineApiError(RuntimeError):
     """Raised when API-level pipeline actions fail."""
 
 
+_ALLOWED_SCRIPT_MODES = {"single", "duo"}
+
+
 def _default_region() -> str:
     return os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
 
@@ -76,6 +79,15 @@ def _validate_source_inputs(*, source_url: str, source_text: str | None) -> None
         )
 
 
+def _normalize_script_mode(script_mode: str) -> str:
+    cleaned = script_mode.strip().lower() if isinstance(script_mode, str) else ""
+    normalized = cleaned or "single"
+    if normalized not in _ALLOWED_SCRIPT_MODES:
+        allowed = ", ".join(sorted(_ALLOWED_SCRIPT_MODES))
+        raise PipelineApiError(f"script_mode must be one of: {allowed}")
+    return normalized
+
+
 def resolve_state_machine_arn(*, cloudformation: Any, stack_name: str) -> str:
     try:
         response = cloudformation.describe_stacks(StackName=stack_name)
@@ -102,6 +114,7 @@ def start_pipeline_execution(
     source_text: str | None = None,
     job_id: str | None = None,
     style: str = "podcast",
+    script_mode: str = "single",
     region: str | None = None,
     stack_name: str | None = None,
     state_machine_arn: str | None = None,
@@ -112,6 +125,7 @@ def start_pipeline_execution(
     )
     cleaned_job_id = job_id.strip() if isinstance(job_id, str) and job_id.strip() else None
     cleaned_style = style.strip() if isinstance(style, str) and style.strip() else "podcast"
+    cleaned_script_mode = _normalize_script_mode(script_mode)
     cleaned_region = (
         region.strip() if isinstance(region, str) and region.strip() else _default_region()
     )
@@ -132,6 +146,7 @@ def start_pipeline_execution(
         "job_id": resolved_job_id,
         "source_url": cleaned_source_url,
         "style": cleaned_style,
+        "script_mode": cleaned_script_mode,
     }
     if cleaned_source_text:
         payload["source_text"] = cleaned_source_text
@@ -157,6 +172,7 @@ def start_pipeline_execution(
         "job_id": resolved_job_id,
         "source_url": cleaned_source_url,
         "style": cleaned_style,
+        "script_mode": cleaned_script_mode,
         "region": cleaned_region,
         "state_machine_arn": cleaned_state_machine_arn,
         "execution_arn": response.get("executionArn"),

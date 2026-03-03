@@ -26,6 +26,15 @@ class ApiServiceTests(unittest.TestCase):
                 region="us-east-1",
             )
 
+    def test_start_pipeline_execution_rejects_invalid_script_mode(self) -> None:
+        with self.assertRaisesRegex(PipelineApiError, "script_mode must be one of"):
+            start_pipeline_execution(
+                source_url="https://example.com/article",
+                script_mode="three-way",
+                state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
+                region="us-east-1",
+            )
+
     @patch("podcast_anything.api.service.boto3.session.Session")
     def test_start_pipeline_execution_uses_explicit_state_machine_arn(
         self, mock_session_cls: Mock
@@ -43,16 +52,20 @@ class ApiServiceTests(unittest.TestCase):
             source_url="https://example.com/article",
             job_id="job-1",
             style="podcast",
+            script_mode="duo",
             state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
             region="us-east-1",
         )
 
         mock_session.client.assert_called_once_with("stepfunctions")
         mock_sf.start_execution.assert_called_once()
+        payload = json.loads(mock_sf.start_execution.call_args.kwargs["input"])
+        self.assertEqual("duo", payload["script_mode"])
         self.assertEqual("job-1", result["job_id"])
         self.assertEqual(
             "arn:aws:states:us-east-1:123:stateMachine:sm", result["state_machine_arn"]
         )
+        self.assertEqual("duo", result["script_mode"])
 
     @patch("podcast_anything.api.service.boto3.session.Session")
     def test_start_pipeline_execution_includes_source_text_when_provided(
@@ -197,6 +210,24 @@ class ApiHandlerTests(unittest.TestCase):
         self.assertEqual(202, response["statusCode"])
         mock_start.assert_called_once()
         self.assertEqual("hello transcript", mock_start.call_args.kwargs["source_text"])
+
+    @patch("podcast_anything.api.handlers.start_pipeline_execution")
+    def test_start_execution_handler_forwards_script_mode(self, mock_start: Mock) -> None:
+        mock_start.return_value = {"job_id": "job-1", "execution_arn": "arn:execution"}
+        event = {
+            "body": json.dumps(
+                {
+                    "source_url": "https://example.com/article",
+                    "script_mode": "duo",
+                }
+            )
+        }
+
+        response = handlers.start_execution_handler(event, None)
+
+        self.assertEqual(202, response["statusCode"])
+        mock_start.assert_called_once()
+        self.assertEqual("duo", mock_start.call_args.kwargs["script_mode"])
 
     def test_start_execution_handler_rejects_youtube_without_transcript(self) -> None:
         event = {

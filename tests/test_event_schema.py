@@ -32,6 +32,7 @@ class PipelineEventTests(unittest.TestCase):
         self.assertEqual("abc-123", output["trace_id"])
         self.assertEqual("job-1", output["job_id"])
         self.assertEqual("podcast", output["style"])
+        self.assertEqual("single", output["script_mode"])
 
     def test_rejects_invalid_field_types(self) -> None:
         with self.assertRaisesRegex(EventSchemaError, "must be a string"):
@@ -39,6 +40,21 @@ class PipelineEventTests(unittest.TestCase):
 
         with self.assertRaisesRegex(EventSchemaError, "must be >= 0"):
             PipelineEvent.from_dict({"audio_estimated_duration_sec": -1})
+
+        with self.assertRaisesRegex(EventSchemaError, "script_mode"):
+            PipelineEvent.from_dict({"script_mode": "three-way"})
+
+    def test_accepts_duo_script_mode(self) -> None:
+        event = PipelineEvent.from_dict(
+            {
+                "job_id": "job-1",
+                "source_url": "https://example.com/article",
+                "script_mode": "duo",
+            },
+            stage="fetch",
+        )
+
+        self.assertEqual("duo", event.script_mode)
 
     def test_stage_require_helpers_return_required_fields(self) -> None:
         fetch_event = PipelineEvent.from_dict(
