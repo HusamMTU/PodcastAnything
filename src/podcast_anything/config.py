@@ -15,7 +15,12 @@ class Settings:
     bucket: str
     region: str
     bedrock_model_id: str
-    polly_voice_id: str
+    tts_provider: str = "polly"
+    polly_voice_id: str = "Joanna"
+    elevenlabs_api_key: str | None = None
+    elevenlabs_voice_id: str = "JBFqnCBsd6RMkjVDRZzb"
+    elevenlabs_model_id: str = "eleven_multilingual_v2"
+    elevenlabs_output_format: str = "mp3_44100_128"
 
 
 def _require_env(name: str) -> str:
@@ -33,11 +38,33 @@ def load_settings() -> Settings:
     region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
 
     bedrock_model_id = _require_env("BEDROCK_MODEL_ID")
+    tts_provider = (os.environ.get("TTS_PROVIDER", "polly") or "polly").strip().lower()
+    if tts_provider not in {"polly", "elevenlabs"}:
+        raise ConfigError("TTS_PROVIDER must be either 'polly' or 'elevenlabs'")
+
     polly_voice_id = os.environ.get("POLLY_VOICE_ID", "Joanna")
+    elevenlabs_api_key = (os.environ.get("ELEVENLABS_API_KEY") or "").strip() or None
+    elevenlabs_voice_id = (os.environ.get("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")).strip()
+    elevenlabs_model_id = (os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")).strip()
+    elevenlabs_output_format = (os.environ.get("ELEVENLABS_OUTPUT_FORMAT", "mp3_44100_128")).strip()
+
+    if tts_provider == "elevenlabs" and not elevenlabs_api_key:
+        raise ConfigError("Missing required environment variable: ELEVENLABS_API_KEY")
+    if not elevenlabs_voice_id:
+        raise ConfigError("ELEVENLABS_VOICE_ID must not be empty")
+    if not elevenlabs_model_id:
+        raise ConfigError("ELEVENLABS_MODEL_ID must not be empty")
+    if not elevenlabs_output_format:
+        raise ConfigError("ELEVENLABS_OUTPUT_FORMAT must not be empty")
 
     return Settings(
         bucket=bucket,
         region=region,
         bedrock_model_id=bedrock_model_id,
+        tts_provider=tts_provider,
         polly_voice_id=polly_voice_id,
+        elevenlabs_api_key=elevenlabs_api_key,
+        elevenlabs_voice_id=elevenlabs_voice_id,
+        elevenlabs_model_id=elevenlabs_model_id,
+        elevenlabs_output_format=elevenlabs_output_format,
     )

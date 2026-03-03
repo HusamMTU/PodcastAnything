@@ -31,8 +31,9 @@ scripts/test.sh
 - `test_requires_job_id_and_article_s3_key`: `rewrite_script.handler` rejects missing required input fields.
 - `test_reads_article_rewrites_and_stores_outputs`: `rewrite_script.handler` builds prompt, calls Bedrock helper, stores script and metadata.
 - `test_requires_job_id_and_script_s3_key`: `generate_audio.handler` rejects missing required input fields.
-- `test_reads_script_synthesizes_audio_and_stores_mp3`: `generate_audio.handler` reads script, synthesizes SSML audio, stores MP3, returns expected keys.
+- `test_reads_script_synthesizes_audio_and_stores_mp3`: `generate_audio.handler` reads script, synthesizes audio with provider-aware defaults, stores MP3, returns expected keys.
 - `test_uses_event_voice_override`: `generate_audio.handler` prefers event `voice_id` over default config voice.
+- `test_uses_elevenlabs_defaults_when_provider_selected`: `generate_audio.handler` switches to ElevenLabs defaults when `TTS_PROVIDER=elevenlabs`.
 
 ## `tests/test_llm.py`
 
@@ -48,6 +49,18 @@ scripts/test.sh
 - `test_raises_when_text_is_empty`: rejects empty/whitespace text input.
 - `test_ssml_mode_wraps_speak_and_sets_text_type`: SSML mode wraps content with SSML tags and sets `TextType=ssml`.
 - `test_rejects_invalid_text_type`: rejects unsupported `text_type` values.
+- `test_rejects_unknown_provider`: rejects unsupported `provider` values.
+- `test_elevenlabs_mode_calls_http_api`: ElevenLabs mode calls the text-to-speech HTTP API and concatenates audio chunks.
+- `test_elevenlabs_requires_api_key`: ElevenLabs mode fails fast when API key is missing.
+- `test_elevenlabs_rejects_ssml_mode`: ElevenLabs mode rejects SSML in this pipeline.
+- `test_elevenlabs_wraps_request_exceptions`: ElevenLabs mode wraps HTTP client errors in `TTSError`.
+
+## `tests/test_config.py`
+
+- `test_defaults_to_polly_provider`: loads `polly` defaults when no `TTS_PROVIDER` is set.
+- `test_rejects_unknown_tts_provider`: rejects unsupported provider values at config load.
+- `test_requires_elevenlabs_api_key_when_provider_selected`: enforces API key requirement for ElevenLabs provider.
+- `test_loads_elevenlabs_settings`: loads ElevenLabs-specific environment configuration.
 
 ## `tests/test_api.py`
 

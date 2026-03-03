@@ -6,7 +6,7 @@ Current stage supports:
 - public article URLs
 - YouTube URLs (captions fetched locally by the CLI, then sent to AWS)
 
-The pipeline rewrites source content into a single-speaker podcast script with Bedrock, then generates audio with Amazon Polly.
+The pipeline rewrites source content into a single-speaker podcast script with Bedrock, then generates audio with a configurable TTS provider (`polly` or `elevenlabs`).
 
 ## Table of Contents
 
@@ -45,7 +45,7 @@ Future inputs can include:
 - YouTube URL support without AWS-side caption scraping
   - CLI fetches captions locally when possible
   - backend receives transcript text
-- Polly SSML + `generative` engine with chunked synthesis
+- Configurable TTS provider: Polly (SSML + `generative` engine) or ElevenLabs HTTP API
 - CDK (Python) infrastructure
 - Unit tests + GitHub Actions CI + Ruff linting
 
@@ -56,7 +56,7 @@ High-level flow:
 1. Start execution via `scripts/start_execution.py` or `POST /executions`.
 2. Fetch normalized source text and store it in S3 as `source.txt`.
 3. Rewrite source text into a podcast script with Bedrock.
-4. Generate audio with Polly and store `audio.mp3`.
+4. Generate audio with the configured TTS provider and store `audio.mp3`.
 5. Query execution status with `GET /executions`.
 
 Core AWS services:
@@ -65,7 +65,8 @@ Core AWS services:
 - Step Functions
 - API Gateway (HTTP API)
 - Bedrock Runtime
-- Polly
+- Polly (when `TTS_PROVIDER=polly`)
+- ElevenLabs Text-to-Speech API (when `TTS_PROVIDER=elevenlabs`)
 
 ```mermaid
 flowchart LR
@@ -76,7 +77,7 @@ flowchart LR
   SFN --> F["Fetch -> Rewrite -> Generate<br/>Lambda Steps"]
   F -->|read/write artifacts| S3[(S3 ArtifactsBucket)]
   F -->|LLM calls| BR[Bedrock Runtime]
-  F -->|TTS calls| P[Amazon Polly]
+  F -->|TTS calls| T[TTS Provider (Polly or ElevenLabs)]
 ```
 
 More details:
@@ -123,7 +124,12 @@ set -a; source .env; set +a
 
 Optional:
 - `AWS_REGION` (default `us-east-1`)
-- `POLLY_VOICE_ID` (default `Joanna`, must support Polly `generative` engine in your region)
+- `TTS_PROVIDER` (default `polly`; supported values: `polly`, `elevenlabs`)
+- `POLLY_VOICE_ID` (default `Joanna`; used when `TTS_PROVIDER=polly`; must support Polly `generative` engine in your region)
+- `ELEVENLABS_API_KEY` (required when `TTS_PROVIDER=elevenlabs`)
+- `ELEVENLABS_VOICE_ID` (default `JBFqnCBsd6RMkjVDRZzb`; used when `TTS_PROVIDER=elevenlabs`)
+- `ELEVENLABS_MODEL_ID` (default `eleven_multilingual_v2`; used when `TTS_PROVIDER=elevenlabs`)
+- `ELEVENLABS_OUTPUT_FORMAT` (default `mp3_44100_128`; used when `TTS_PROVIDER=elevenlabs`)
 
 ### Deploy Infrastructure
 
@@ -250,9 +256,13 @@ The pipeline stores artifacts under `jobs/<job_id>/`:
 
 ### Audio Generation Notes
 
-- Polly engine: `generative`
-- Polly text type: `ssml`
-- Long scripts are chunked before synthesis and concatenated into one MP3
+- `TTS_PROVIDER=polly`
+  - Polly engine: `generative`
+  - Polly text type: `ssml`
+- `TTS_PROVIDER=elevenlabs`
+  - ElevenLabs endpoint: `POST /v1/text-to-speech/{voice_id}`
+  - Pipeline uses plain text chunks (`text_type=text`)
+- Long scripts are chunked before synthesis and concatenated into one MP3 for both providers.
 
 ## Testing
 
@@ -281,7 +291,8 @@ Primary resources:
 - API Lambda functions: `StartExecutionApiFn`, `GetExecutionApiFn`
 - Step Functions state machine: `PipelineStateMachine`
 - HTTP API Gateway routes: `POST /executions`, `GET /executions`
-- IAM policies for S3, Bedrock, Polly, and Step Functions status/start calls
+- IAM policies for S3, Bedrock, and Step Functions status/start calls
+- Polly IAM permissions are added only when `TTS_PROVIDER=polly`
 
 Useful commands:
 
@@ -316,8 +327,13 @@ See `infra/INFRA.md` for details and the architecture sketch.
   - Usually non-fatal if your current credentials still have deploy permissions.
 - Polly fails with `EngineNotSupportedException` or voice errors
   - Pick a `POLLY_VOICE_ID` that supports Polly `generative` engine in the configured region.
+- ElevenLabs requests fail with `401`/`403`/`429`
+  - Confirm `ELEVENLABS_API_KEY` is valid, and check plan/rate limits.
+- Lambda cannot reach ElevenLabs API
+  - If Lambda runs inside a VPC, ensure outbound internet access (for example, NAT gateway/egress path).
 
 ## Security Notes
 
 - Keep `.env` out of version control.
 - Do not commit long-lived AWS access keys.
+- Do not commit long-lived `ELEVENLABS_API_KEY` values.

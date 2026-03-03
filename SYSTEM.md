@@ -17,7 +17,7 @@ High-Level Flow
 1. Submit an event with `source_url`; the service generates `job_id` automatically.
 2. Fetch and clean source text (article body), or accept caller-provided source/transcript text.
 3. Rewrite source text into podcast script text with Bedrock.
-4. Generate audio from script with Polly (SSML + generative engine, with chunked synthesis).
+4. Generate audio from script with the configured TTS provider (Polly or ElevenLabs, with chunked synthesis).
 5. Store artifacts in S3 under the job prefix.
 
 AWS Services (Implemented)
@@ -26,7 +26,8 @@ AWS Services (Implemented)
 - Step Functions: Orchestrates `fetch -> rewrite -> generate`
 - API Gateway (HTTP API): exposes execution start and status routes
 - Bedrock Runtime: LLM inference (Anthropic and Nova request formats supported)
-- Polly: TTS audio generation (`generative` engine, `ssml` text type)
+- Polly: TTS audio generation (`generative` engine, `ssml` text type) when `TTS_PROVIDER=polly`
+- ElevenLabs API: TTS audio generation (`text` input via HTTP API) when `TTS_PROVIDER=elevenlabs`
 - CloudWatch: Lambda logs
 
 API Layer
@@ -64,7 +65,9 @@ Handler Contracts
 - `fetch_article`: reads `job_id`, `source_url`; fetches article text or uses provided `source_text`; writes `source.txt`; returns `article_s3_key` and inferred `source_type`
 - `rewrite_script`: reads `job_id`, `article_s3_key`; writes `script.txt` and `script.json`; returns `script_s3_key`
 - `generate_audio`: reads `job_id`, `script_s3_key`; writes `audio.mp3`; returns `audio_s3_key`
-  - synthesis mode: SSML with chunking (`max_text_chars=1800`) to avoid Polly request length limits
+  - synthesis mode by provider:
+    - Polly: SSML with chunking (`max_text_chars=1800`) to avoid Polly request length limits
+    - ElevenLabs: plain text chunking (`max_text_chars=1800`) with provider HTTP API calls
 - Event validation: shared typed schema in `src/podcast_anything/event_schema.py`
 
 Infrastructure (CDK)
@@ -75,7 +78,8 @@ Infrastructure (CDK)
 - Creates one HTTP API with routes:
   - `POST /executions`
   - `GET /executions`
-- Grants least-required service permissions for S3 + Bedrock + Polly
+- Grants least-required service permissions for S3 + Bedrock + Step Functions APIs
+- Adds Polly permissions only when `TTS_PROVIDER=polly`
 
 Assumptions
 - Article is publicly accessible and text-heavy, or caller can provide transcript text for video inputs

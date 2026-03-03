@@ -214,8 +214,12 @@ class GenerateAudioHandlerTests(unittest.TestCase):
         mock_synthesize.assert_called_once_with(
             "one two three four five",
             voice_id="Amy",
+            provider="polly",
+            output_format="mp3",
             text_type="ssml",
             max_text_chars=1800,
+            elevenlabs_api_key=None,
+            elevenlabs_model_id="eleven_multilingual_v2",
         )
         mock_put_bytes.assert_called_once_with(
             "default-bucket",
@@ -256,8 +260,52 @@ class GenerateAudioHandlerTests(unittest.TestCase):
         mock_synthesize.assert_called_once_with(
             "script",
             voice_id="Joanna",
+            provider="polly",
+            output_format="mp3",
             text_type="ssml",
             max_text_chars=1800,
+            elevenlabs_api_key=None,
+            elevenlabs_model_id="eleven_multilingual_v2",
+        )
+
+    @patch("podcast_anything.handlers.generate_audio.put_bytes")
+    @patch(
+        "podcast_anything.handlers.generate_audio.synthesize_speech", return_value=b"audio-bytes"
+    )
+    @patch("podcast_anything.handlers.generate_audio.get_text", return_value="script")
+    @patch("podcast_anything.handlers.generate_audio.load_settings")
+    def test_uses_elevenlabs_defaults_when_provider_selected(
+        self,
+        mock_settings: Mock,
+        _mock_get_text: Mock,
+        mock_synthesize: Mock,
+        _mock_put_bytes: Mock,
+    ) -> None:
+        mock_settings.return_value = Settings(
+            bucket="default-bucket",
+            region="us-east-1",
+            bedrock_model_id="us.amazon.nova-lite-v1:0",
+            tts_provider="elevenlabs",
+            elevenlabs_api_key="test-elevenlabs-key",
+            elevenlabs_voice_id="voice-from-settings",
+            elevenlabs_model_id="eleven_multilingual_v2",
+            elevenlabs_output_format="mp3_44100_128",
+        )
+        event = {
+            "job_id": "job-102",
+            "script_s3_key": "jobs/job-102/script.txt",
+        }
+
+        generate_audio.handler(event, None)
+        mock_synthesize.assert_called_once_with(
+            "script",
+            voice_id="voice-from-settings",
+            provider="elevenlabs",
+            output_format="mp3_44100_128",
+            text_type="text",
+            max_text_chars=1800,
+            elevenlabs_api_key="test-elevenlabs-key",
+            elevenlabs_model_id="eleven_multilingual_v2",
         )
 
 
