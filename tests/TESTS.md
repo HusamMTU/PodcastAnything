@@ -35,6 +35,9 @@ scripts/test.sh
 - `test_reads_script_synthesizes_audio_and_stores_mp3`: `generate_audio.handler` reads script, synthesizes audio with provider-aware defaults, stores MP3, returns expected keys.
 - `test_uses_event_voice_override`: `generate_audio.handler` prefers event `voice_id` over default config voice.
 - `test_uses_elevenlabs_defaults_when_provider_selected`: `generate_audio.handler` switches to ElevenLabs defaults when `TTS_PROVIDER=elevenlabs`.
+- `test_duo_script_mode_synthesizes_with_two_voices`: duo mode alternates between configured speaker A/B voices and concatenates turn audio.
+- `test_duo_script_mode_uses_event_voice_overrides`: duo mode prefers event voice overrides for both speakers.
+- `test_duo_script_mode_requires_host_labels`: duo mode fails fast when script lines are missing `HOST_A`/`HOST_B` labels.
 
 ## `tests/test_llm.py`
 
@@ -71,6 +74,7 @@ scripts/test.sh
 - `test_start_pipeline_execution_includes_source_text_when_provided`: includes caller-provided source/transcript text in Step Functions input.
 - `test_start_pipeline_execution_rejects_youtube_without_transcript`: rejects YouTube URLs unless transcript text is provided by the caller.
 - `test_start_pipeline_execution_rejects_invalid_script_mode`: rejects unsupported `script_mode` values.
+- `test_start_pipeline_execution_rejects_blank_voice_id_b`: rejects blank secondary voice overrides.
 - `test_start_pipeline_execution_resolves_state_machine_arn_from_stack`: resolves ARN from CloudFormation outputs before starting execution.
 - `test_resolve_state_machine_arn_raises_when_output_missing`: fails fast when `PipelineStateMachineArn` output is absent.
 - `test_start_pipeline_execution_generates_job_id_when_missing`: auto-generates a unique job ID when none is provided.
@@ -78,6 +82,7 @@ scripts/test.sh
 - `test_start_execution_handler_returns_accepted`: returns `202` and delegates execution start to service layer.
 - `test_start_execution_handler_accepts_transcript_text_alias`: accepts `transcript_text` and forwards it as `source_text`.
 - `test_start_execution_handler_forwards_script_mode`: forwards `script_mode` from API request body to service layer.
+- `test_start_execution_handler_forwards_duo_voice_overrides`: forwards `voice_id` and `voice_id_b` overrides to service layer.
 - `test_start_execution_handler_rejects_youtube_without_transcript`: returns `400` when a YouTube URL is submitted without transcript text.
 - `test_get_execution_handler_requires_execution_arn`: returns `400` when execution identifier is missing.
 - `test_get_execution_handler_returns_status`: returns `200` with execution status payload from service layer.

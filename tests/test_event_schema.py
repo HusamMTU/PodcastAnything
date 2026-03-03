@@ -50,11 +50,13 @@ class PipelineEventTests(unittest.TestCase):
                 "job_id": "job-1",
                 "source_url": "https://example.com/article",
                 "script_mode": "duo",
+                "voice_id_b": "Matthew",
             },
             stage="fetch",
         )
 
         self.assertEqual("duo", event.script_mode)
+        self.assertEqual("Matthew", event.voice_id_b)
 
     def test_stage_require_helpers_return_required_fields(self) -> None:
         fetch_event = PipelineEvent.from_dict(

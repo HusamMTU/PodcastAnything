@@ -44,9 +44,11 @@ This directory contains the AWS CDK app for the `PodcastAnythingStack`.
 
 Optional:
 - `POLLY_VOICE_ID` (default: `Joanna`)
+- `POLLY_DUO_VOICE_ID` (default: `POLLY_VOICE_ID`; used as `HOST_B` voice in duo audio mode)
 - `TTS_PROVIDER` (default: `polly`; supported values: `polly`, `elevenlabs`)
 - `ELEVENLABS_API_KEY` (required when `TTS_PROVIDER=elevenlabs`)
 - `ELEVENLABS_VOICE_ID` (default: `JBFqnCBsd6RMkjVDRZzb`)
+- `ELEVENLABS_DUO_VOICE_ID` (default: `ELEVENLABS_VOICE_ID`; used as `HOST_B` voice in duo audio mode)
 - `ELEVENLABS_MODEL_ID` (default: `eleven_multilingual_v2`)
 - `ELEVENLABS_OUTPUT_FORMAT` (default: `mp3_44100_128`)
 - `AWS_REGION` (default used by app: `us-east-1`)

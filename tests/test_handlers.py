@@ -311,6 +311,117 @@ class GenerateAudioHandlerTests(unittest.TestCase):
             elevenlabs_model_id="eleven_multilingual_v2",
         )
 
+    @patch("podcast_anything.handlers.generate_audio.put_bytes")
+    @patch("podcast_anything.handlers.generate_audio.synthesize_speech")
+    @patch(
+        "podcast_anything.handlers.generate_audio.get_text",
+        return_value="HOST_A: hello there\nHOST_B: hi back",
+    )
+    @patch("podcast_anything.handlers.generate_audio.load_settings")
+    def test_duo_script_mode_synthesizes_with_two_voices(
+        self,
+        mock_settings: Mock,
+        _mock_get_text: Mock,
+        mock_synthesize: Mock,
+        mock_put_bytes: Mock,
+    ) -> None:
+        mock_settings.return_value = Settings(
+            bucket="default-bucket",
+            region="us-east-1",
+            bedrock_model_id="us.amazon.nova-lite-v1:0",
+            polly_voice_id="Amy",
+            polly_duo_voice_id="Matthew",
+        )
+        mock_synthesize.side_effect = [b"voice-a", b"voice-b"]
+        event = {
+            "job_id": "job-103",
+            "script_s3_key": "jobs/job-103/script.txt",
+            "script_mode": "duo",
+        }
+
+        result = generate_audio.handler(event, None)
+
+        self.assertEqual(2, mock_synthesize.call_count)
+        first_call = mock_synthesize.call_args_list[0].kwargs
+        second_call = mock_synthesize.call_args_list[1].kwargs
+        self.assertEqual("Amy", first_call["voice_id"])
+        self.assertEqual("Matthew", second_call["voice_id"])
+        self.assertEqual("polly", first_call["provider"])
+        mock_put_bytes.assert_called_once_with(
+            "default-bucket",
+            "jobs/job-103/audio.mp3",
+            b"voice-avoice-b",
+            content_type="audio/mpeg",
+        )
+        self.assertEqual("jobs/job-103/audio.mp3", result["audio_s3_key"])
+
+    @patch("podcast_anything.handlers.generate_audio.put_bytes")
+    @patch("podcast_anything.handlers.generate_audio.synthesize_speech")
+    @patch(
+        "podcast_anything.handlers.generate_audio.get_text",
+        return_value="HOST_A: hello there\nHOST_B: hi back",
+    )
+    @patch("podcast_anything.handlers.generate_audio.load_settings")
+    def test_duo_script_mode_uses_event_voice_overrides(
+        self,
+        mock_settings: Mock,
+        _mock_get_text: Mock,
+        mock_synthesize: Mock,
+        _mock_put_bytes: Mock,
+    ) -> None:
+        mock_settings.return_value = Settings(
+            bucket="default-bucket",
+            region="us-east-1",
+            bedrock_model_id="us.amazon.nova-lite-v1:0",
+            polly_voice_id="Amy",
+            polly_duo_voice_id="Matthew",
+        )
+        mock_synthesize.side_effect = [b"voice-a", b"voice-b"]
+        event = {
+            "job_id": "job-104",
+            "script_s3_key": "jobs/job-104/script.txt",
+            "script_mode": "duo",
+            "voice_id": "Joanna",
+            "voice_id_b": "Ruth",
+        }
+
+        generate_audio.handler(event, None)
+
+        first_call = mock_synthesize.call_args_list[0].kwargs
+        second_call = mock_synthesize.call_args_list[1].kwargs
+        self.assertEqual("Joanna", first_call["voice_id"])
+        self.assertEqual("Ruth", second_call["voice_id"])
+
+    @patch("podcast_anything.handlers.generate_audio.put_bytes")
+    @patch("podcast_anything.handlers.generate_audio.synthesize_speech")
+    @patch(
+        "podcast_anything.handlers.generate_audio.get_text",
+        return_value="No speaker labels here",
+    )
+    @patch("podcast_anything.handlers.generate_audio.load_settings")
+    def test_duo_script_mode_requires_host_labels(
+        self,
+        mock_settings: Mock,
+        _mock_get_text: Mock,
+        _mock_synthesize: Mock,
+        _mock_put_bytes: Mock,
+    ) -> None:
+        mock_settings.return_value = Settings(
+            bucket="default-bucket",
+            region="us-east-1",
+            bedrock_model_id="us.amazon.nova-lite-v1:0",
+            polly_voice_id="Amy",
+            polly_duo_voice_id="Matthew",
+        )
+        event = {
+            "job_id": "job-105",
+            "script_s3_key": "jobs/job-105/script.txt",
+            "script_mode": "duo",
+        }
+
+        with self.assertRaisesRegex(ValueError, "script_mode=duo requires script lines"):
+            generate_audio.handler(event, None)
+
 
 if __name__ == "__main__":
     unittest.main()
