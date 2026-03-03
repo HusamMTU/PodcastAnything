@@ -21,6 +21,7 @@ scripts/test.sh
 - `test_validates_stage_requirements`: enforces required fields for `fetch`, `rewrite`, and `generate` stages.
 - `test_keeps_unknown_fields_when_round_tripping`: preserves unknown fields in `extras` during `from_dict` -> `to_dict`.
 - `test_rejects_invalid_field_types`: rejects invalid types and negative numeric fields.
+- `test_accepts_duo_script_mode`: accepts `script_mode=duo` and normalizes it into the event model.
 - `test_stage_require_helpers_return_required_fields`: validates `require_fetch_fields`, `require_rewrite_fields`, and `require_generate_fields`.
 
 ## `tests/test_handlers.py`
@@ -40,6 +41,8 @@ scripts/test.sh
 - `test_routes_anthropic_ids`: routes Anthropic model IDs to `call_bedrock_anthropic`.
 - `test_routes_nova_ids`: routes Nova model IDs to `call_bedrock_nova`.
 - `test_raises_for_unsupported_model_ids`: raises `LLMError` for unsupported model families.
+- `test_builds_duo_script_prompt_with_host_labels`: duo mode prompt includes explicit `HOST_A`/`HOST_B` dialogue constraints.
+- `test_rejects_unknown_script_mode`: prompt builder rejects unsupported script modes.
 
 ## `tests/test_tts.py`
 
@@ -67,12 +70,14 @@ scripts/test.sh
 - `test_start_pipeline_execution_uses_explicit_state_machine_arn`: starts Step Functions execution with a provided ARN.
 - `test_start_pipeline_execution_includes_source_text_when_provided`: includes caller-provided source/transcript text in Step Functions input.
 - `test_start_pipeline_execution_rejects_youtube_without_transcript`: rejects YouTube URLs unless transcript text is provided by the caller.
+- `test_start_pipeline_execution_rejects_invalid_script_mode`: rejects unsupported `script_mode` values.
 - `test_start_pipeline_execution_resolves_state_machine_arn_from_stack`: resolves ARN from CloudFormation outputs before starting execution.
 - `test_resolve_state_machine_arn_raises_when_output_missing`: fails fast when `PipelineStateMachineArn` output is absent.
 - `test_start_pipeline_execution_generates_job_id_when_missing`: auto-generates a unique job ID when none is provided.
 - `test_start_execution_handler_rejects_invalid_json`: returns `400` for malformed JSON request bodies.
 - `test_start_execution_handler_returns_accepted`: returns `202` and delegates execution start to service layer.
 - `test_start_execution_handler_accepts_transcript_text_alias`: accepts `transcript_text` and forwards it as `source_text`.
+- `test_start_execution_handler_forwards_script_mode`: forwards `script_mode` from API request body to service layer.
 - `test_start_execution_handler_rejects_youtube_without_transcript`: returns `400` when a YouTube URL is submitted without transcript text.
 - `test_get_execution_handler_requires_execution_arn`: returns `400` when execution identifier is missing.
 - `test_get_execution_handler_returns_status`: returns `200` with execution status payload from service layer.

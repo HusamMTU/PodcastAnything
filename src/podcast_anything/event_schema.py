@@ -17,6 +17,7 @@ _KNOWN_FIELDS = {
     "source_type",
     "title",
     "style",
+    "script_mode",
     "voice_id",
     "bucket",
     "article_s3_key",
@@ -26,6 +27,17 @@ _KNOWN_FIELDS = {
     "audio_s3_key",
     "audio_estimated_duration_sec",
 }
+
+
+_ALLOWED_SCRIPT_MODES = {"single", "duo"}
+
+
+def _normalize_script_mode(value: str | None) -> str:
+    cleaned = (value or "single").strip().lower()
+    if cleaned not in _ALLOWED_SCRIPT_MODES:
+        allowed = ", ".join(sorted(_ALLOWED_SCRIPT_MODES))
+        raise EventSchemaError(f"event field 'script_mode' must be one of: {allowed}")
+    return cleaned
 
 
 def _read_optional_string(value: Any, field_name: str) -> str | None:
@@ -57,6 +69,7 @@ class PipelineEvent:
     source_type: str | None = None
     title: str | None = None
     style: str = "podcast"
+    script_mode: str = "single"
     voice_id: str | None = None
     bucket: str | None = None
     article_s3_key: str | None = None
@@ -79,6 +92,9 @@ class PipelineEvent:
             source_type=_read_optional_string(payload.get("source_type"), "source_type"),
             title=_read_optional_string(payload.get("title"), "title"),
             style=_read_optional_string(payload.get("style"), "style") or "podcast",
+            script_mode=_normalize_script_mode(
+                _read_optional_string(payload.get("script_mode"), "script_mode")
+            ),
             voice_id=_read_optional_string(payload.get("voice_id"), "voice_id"),
             bucket=_read_optional_string(payload.get("bucket"), "bucket"),
             article_s3_key=_read_optional_string(payload.get("article_s3_key"), "article_s3_key"),
@@ -146,6 +162,7 @@ class PipelineEvent:
             ("source_type", self.source_type),
             ("title", self.title),
             ("style", self.style),
+            ("script_mode", self.script_mode),
             ("voice_id", self.voice_id),
             ("bucket", self.bucket),
             ("article_s3_key", self.article_s3_key),

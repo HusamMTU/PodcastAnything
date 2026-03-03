@@ -146,6 +146,7 @@ class RewriteScriptHandlerTests(unittest.TestCase):
             "source_type": "youtube",
             "title": "Sample Title",
             "style": "podcast",
+            "script_mode": "duo",
             "article_s3_key": "jobs/job-456/source.txt",
         }
 
@@ -160,6 +161,7 @@ class RewriteScriptHandlerTests(unittest.TestCase):
             title="Sample Title",
             style="podcast",
             source_type="youtube",
+            script_mode="duo",
         )
         mock_call_bedrock.assert_called_once_with("us.amazon.nova-lite-v1:0", "prompt text")
         mock_put_text.assert_called_once_with("default-bucket", script_key, "podcast script")
@@ -171,6 +173,7 @@ class RewriteScriptHandlerTests(unittest.TestCase):
         self.assertEqual(script_key, put_json_args[2]["script_s3_key"])
         self.assertEqual("us.amazon.nova-lite-v1:0", put_json_args[2]["model_id"])
         self.assertEqual("youtube", put_json_args[2]["source_type"])
+        self.assertEqual("duo", put_json_args[2]["script_mode"])
 
         self.assertEqual(script_key, result["script_s3_key"])
         self.assertEqual(metadata_key, result["script_metadata_s3_key"])

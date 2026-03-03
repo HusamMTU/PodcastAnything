@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import Mock, patch
 
-from podcast_anything.llm import LLMError, call_bedrock
+from podcast_anything.llm import LLMError, build_podcast_prompt, call_bedrock
 
 
 class CallBedrockRoutingTests(unittest.TestCase):
@@ -48,6 +48,26 @@ class CallBedrockRoutingTests(unittest.TestCase):
     def test_raises_for_unsupported_model_ids(self) -> None:
         with self.assertRaisesRegex(LLMError, "Unsupported Bedrock model_id"):
             call_bedrock("meta.llama3-8b-instruct-v1:0", "prompt")
+
+
+class BuildPodcastPromptTests(unittest.TestCase):
+    def test_builds_duo_script_prompt_with_host_labels(self) -> None:
+        prompt = build_podcast_prompt(
+            article_text="source text",
+            title="Example title",
+            style="conversational",
+            source_type="article",
+            script_mode="duo",
+        )
+
+        self.assertIn("two-host podcast dialogue", prompt)
+        self.assertIn("HOST_A:", prompt)
+        self.assertIn("HOST_B:", prompt)
+        self.assertIn("Script Mode: duo", prompt)
+
+    def test_rejects_unknown_script_mode(self) -> None:
+        with self.assertRaisesRegex(LLMError, "script_mode"):
+            build_podcast_prompt(article_text="source text", script_mode="trio")
 
 
 if __name__ == "__main__":

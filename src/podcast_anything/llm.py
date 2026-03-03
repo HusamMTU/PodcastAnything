@@ -16,15 +16,34 @@ def build_podcast_prompt(
     title: str | None = None,
     style: str = "podcast",
     source_type: str | None = None,
+    script_mode: str = "single",
 ) -> str:
     title_line = f"Title: {title}\n" if title else ""
     source_label = "YouTube transcript" if source_type == "youtube" else "source material"
+    normalized_script_mode = script_mode.strip().lower()
+    if normalized_script_mode == "single":
+        script_instruction = (
+            "Rewrite it into a natural, single-host podcast script. Keep it engaging, "
+            "clear, and structured with an intro, 3-5 short segments with signposts, and "
+            "a concise outro. "
+        )
+    elif normalized_script_mode == "duo":
+        script_instruction = (
+            "Rewrite it into a natural, two-host podcast dialogue between HOST_A and HOST_B. "
+            "Use plain text lines prefixed with exactly 'HOST_A:' or 'HOST_B:'. "
+            "Keep it engaging, clear, and structured with an intro, 3-5 short segments with "
+            "signposts, and a concise outro. "
+        )
+    else:
+        raise LLMError("script_mode must be either 'single' or 'duo'.")
+
     return (
-        "You are a podcast writer. Rewrite the following source material into a natural, "
-        "single-host podcast script. Keep it engaging, clear, and structured with an intro, "
-        "3-5 short segments with signposts, and a concise outro. Aim for 6-10 minutes of speech. "
+        "You are a podcast writer. "
+        f"{script_instruction}"
+        "Aim for 6-10 minutes of speech. "
         "Use plain text only; do not include JSON, markdown, or stage directions.\n\n"
         f"Style: {style}\n"
+        f"Script Mode: {normalized_script_mode}\n"
         f"{title_line}"
         f"Input Type: {source_type or 'article'}\n"
         f"{source_label}:\n"
