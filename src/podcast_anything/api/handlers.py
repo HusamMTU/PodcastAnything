@@ -37,6 +37,8 @@ def start_execution_handler(event: dict[str, Any], _context: Any) -> dict[str, A
             job_id=payload.get("job_id"),
             style=payload.get("style", "podcast"),
             script_mode=payload.get("script_mode", "single"),
+            voice_id=payload.get("voice_id"),
+            voice_id_b=payload.get("voice_id_b"),
             region=read_query_param(event, "region"),
             stack_name=read_query_param(event, "stack_name"),
             state_machine_arn=payload.get("state_machine_arn")

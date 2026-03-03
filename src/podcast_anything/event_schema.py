@@ -19,6 +19,7 @@ _KNOWN_FIELDS = {
     "style",
     "script_mode",
     "voice_id",
+    "voice_id_b",
     "bucket",
     "article_s3_key",
     "article_char_count",
@@ -71,6 +72,7 @@ class PipelineEvent:
     style: str = "podcast"
     script_mode: str = "single"
     voice_id: str | None = None
+    voice_id_b: str | None = None
     bucket: str | None = None
     article_s3_key: str | None = None
     article_char_count: int | None = None
@@ -96,6 +98,7 @@ class PipelineEvent:
                 _read_optional_string(payload.get("script_mode"), "script_mode")
             ),
             voice_id=_read_optional_string(payload.get("voice_id"), "voice_id"),
+            voice_id_b=_read_optional_string(payload.get("voice_id_b"), "voice_id_b"),
             bucket=_read_optional_string(payload.get("bucket"), "bucket"),
             article_s3_key=_read_optional_string(payload.get("article_s3_key"), "article_s3_key"),
             article_char_count=_read_optional_int(
@@ -164,6 +167,7 @@ class PipelineEvent:
             ("style", self.style),
             ("script_mode", self.script_mode),
             ("voice_id", self.voice_id),
+            ("voice_id_b", self.voice_id_b),
             ("bucket", self.bucket),
             ("article_s3_key", self.article_s3_key),
             ("article_char_count", self.article_char_count),

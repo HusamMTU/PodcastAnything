@@ -35,6 +35,15 @@ class ApiServiceTests(unittest.TestCase):
                 region="us-east-1",
             )
 
+    def test_start_pipeline_execution_rejects_blank_voice_id_b(self) -> None:
+        with self.assertRaisesRegex(PipelineApiError, "voice_id_b"):
+            start_pipeline_execution(
+                source_url="https://example.com/article",
+                voice_id_b="   ",
+                state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
+                region="us-east-1",
+            )
+
     @patch("podcast_anything.api.service.boto3.session.Session")
     def test_start_pipeline_execution_uses_explicit_state_machine_arn(
         self, mock_session_cls: Mock
@@ -53,6 +62,8 @@ class ApiServiceTests(unittest.TestCase):
             job_id="job-1",
             style="podcast",
             script_mode="duo",
+            voice_id="Joanna",
+            voice_id_b="Matthew",
             state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
             region="us-east-1",
         )
@@ -61,11 +72,15 @@ class ApiServiceTests(unittest.TestCase):
         mock_sf.start_execution.assert_called_once()
         payload = json.loads(mock_sf.start_execution.call_args.kwargs["input"])
         self.assertEqual("duo", payload["script_mode"])
+        self.assertEqual("Joanna", payload["voice_id"])
+        self.assertEqual("Matthew", payload["voice_id_b"])
         self.assertEqual("job-1", result["job_id"])
         self.assertEqual(
             "arn:aws:states:us-east-1:123:stateMachine:sm", result["state_machine_arn"]
         )
         self.assertEqual("duo", result["script_mode"])
+        self.assertEqual("Joanna", result["voice_id"])
+        self.assertEqual("Matthew", result["voice_id_b"])
 
     @patch("podcast_anything.api.service.boto3.session.Session")
     def test_start_pipeline_execution_includes_source_text_when_provided(
@@ -228,6 +243,26 @@ class ApiHandlerTests(unittest.TestCase):
         self.assertEqual(202, response["statusCode"])
         mock_start.assert_called_once()
         self.assertEqual("duo", mock_start.call_args.kwargs["script_mode"])
+
+    @patch("podcast_anything.api.handlers.start_pipeline_execution")
+    def test_start_execution_handler_forwards_duo_voice_overrides(self, mock_start: Mock) -> None:
+        mock_start.return_value = {"job_id": "job-1", "execution_arn": "arn:execution"}
+        event = {
+            "body": json.dumps(
+                {
+                    "source_url": "https://example.com/article",
+                    "voice_id": "Joanna",
+                    "voice_id_b": "Matthew",
+                }
+            )
+        }
+
+        response = handlers.start_execution_handler(event, None)
+
+        self.assertEqual(202, response["statusCode"])
+        mock_start.assert_called_once()
+        self.assertEqual("Joanna", mock_start.call_args.kwargs["voice_id"])
+        self.assertEqual("Matthew", mock_start.call_args.kwargs["voice_id_b"])
 
     def test_start_execution_handler_rejects_youtube_without_transcript(self) -> None:
         event = {

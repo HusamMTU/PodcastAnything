@@ -36,8 +36,10 @@ class PodcastAnythingStack(cdk.Stack):
         if tts_provider not in {"polly", "elevenlabs"}:
             raise ValueError("TTS_PROVIDER must be either 'polly' or 'elevenlabs'.")
         polly_voice_id = os.environ.get("POLLY_VOICE_ID", "Joanna")
+        polly_duo_voice_id = os.environ.get("POLLY_DUO_VOICE_ID", polly_voice_id)
         elevenlabs_api_key = os.environ.get("ELEVENLABS_API_KEY", "")
         elevenlabs_voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")
+        elevenlabs_duo_voice_id = os.environ.get("ELEVENLABS_DUO_VOICE_ID", elevenlabs_voice_id)
         elevenlabs_model_id = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
         elevenlabs_output_format = os.environ.get("ELEVENLABS_OUTPUT_FORMAT", "mp3_44100_128")
 
@@ -57,8 +59,10 @@ class PodcastAnythingStack(cdk.Stack):
             "BEDROCK_MODEL_ID": bedrock_model_id,
             "TTS_PROVIDER": tts_provider,
             "POLLY_VOICE_ID": polly_voice_id,
+            "POLLY_DUO_VOICE_ID": polly_duo_voice_id,
             "ELEVENLABS_API_KEY": elevenlabs_api_key,
             "ELEVENLABS_VOICE_ID": elevenlabs_voice_id,
+            "ELEVENLABS_DUO_VOICE_ID": elevenlabs_duo_voice_id,
             "ELEVENLABS_MODEL_ID": elevenlabs_model_id,
             "ELEVENLABS_OUTPUT_FORMAT": elevenlabs_output_format,
         }

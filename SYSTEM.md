@@ -48,7 +48,8 @@ Input Event Contract
   "title": "optional title",
   "style": "podcast",
   "script_mode": "single | duo (default: single)",
-  "voice_id": "Joanna",
+  "voice_id": "HOST_A voice override",
+  "voice_id_b": "HOST_B voice override (duo mode)",
   "bucket": "optional-bucket-override"
 }
 
@@ -70,6 +71,9 @@ Handler Contracts
     - `single`: single-host narrative script
     - `duo`: two-host dialogue with `HOST_A:` / `HOST_B:` line labels
 - `generate_audio`: reads `job_id`, `script_s3_key`; writes `audio.mp3`; returns `audio_s3_key`
+  - voice routing:
+    - `single`: uses `voice_id` override or provider default voice
+    - `duo`: alternates between `voice_id` (`HOST_A`) and `voice_id_b` (`HOST_B`), with provider duo defaults when overrides are absent
   - synthesis mode by provider:
     - Polly: SSML with chunking (`max_text_chars=1800`) to avoid Polly request length limits
     - ElevenLabs: plain text chunking (`max_text_chars=1800`) with provider HTTP API calls
@@ -89,7 +93,7 @@ Infrastructure (CDK)
 Assumptions
 - Article is publicly accessible and text-heavy, or caller can provide transcript text for video inputs
 - English content first
-- Script output can be `single` or `duo`; TTS is still single voice in current phase
+- Script output can be `single` or `duo`; TTS supports per-turn duo voices when script lines are `HOST_A:` / `HOST_B:` labeled
 
 Planned Next
 - DynamoDB status tracking

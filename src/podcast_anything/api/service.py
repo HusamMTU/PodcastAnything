@@ -88,6 +88,17 @@ def _normalize_script_mode(script_mode: str) -> str:
     return normalized
 
 
+def _normalize_optional_voice_id(value: str | None, field_name: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise PipelineApiError(f"field must be a string: {field_name}")
+    cleaned = value.strip()
+    if not cleaned:
+        raise PipelineApiError(f"field must not be empty: {field_name}")
+    return cleaned
+
+
 def resolve_state_machine_arn(*, cloudformation: Any, stack_name: str) -> str:
     try:
         response = cloudformation.describe_stacks(StackName=stack_name)
@@ -115,6 +126,8 @@ def start_pipeline_execution(
     job_id: str | None = None,
     style: str = "podcast",
     script_mode: str = "single",
+    voice_id: str | None = None,
+    voice_id_b: str | None = None,
     region: str | None = None,
     stack_name: str | None = None,
     state_machine_arn: str | None = None,
@@ -126,6 +139,8 @@ def start_pipeline_execution(
     cleaned_job_id = job_id.strip() if isinstance(job_id, str) and job_id.strip() else None
     cleaned_style = style.strip() if isinstance(style, str) and style.strip() else "podcast"
     cleaned_script_mode = _normalize_script_mode(script_mode)
+    cleaned_voice_id = _normalize_optional_voice_id(voice_id, "voice_id")
+    cleaned_voice_id_b = _normalize_optional_voice_id(voice_id_b, "voice_id_b")
     cleaned_region = (
         region.strip() if isinstance(region, str) and region.strip() else _default_region()
     )
@@ -150,6 +165,10 @@ def start_pipeline_execution(
     }
     if cleaned_source_text:
         payload["source_text"] = cleaned_source_text
+    if cleaned_voice_id:
+        payload["voice_id"] = cleaned_voice_id
+    if cleaned_voice_id_b:
+        payload["voice_id_b"] = cleaned_voice_id_b
 
     try:
         session = boto3.session.Session(region_name=cleaned_region)
@@ -173,6 +192,8 @@ def start_pipeline_execution(
         "source_url": cleaned_source_url,
         "style": cleaned_style,
         "script_mode": cleaned_script_mode,
+        "voice_id": cleaned_voice_id,
+        "voice_id_b": cleaned_voice_id_b,
         "region": cleaned_region,
         "state_machine_arn": cleaned_state_machine_arn,
         "execution_arn": response.get("executionArn"),

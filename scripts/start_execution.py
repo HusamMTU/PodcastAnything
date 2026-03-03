@@ -36,6 +36,16 @@ def _parse_args() -> argparse.Namespace:
         help="Script format mode: single host or two-host dialogue (default: single)",
     )
     parser.add_argument(
+        "--voice-id",
+        default=None,
+        help="Optional voice override for single mode or HOST_A in duo mode",
+    )
+    parser.add_argument(
+        "--voice-id-b",
+        default=None,
+        help="Optional second voice override for HOST_B in duo mode",
+    )
+    parser.add_argument(
         "--transcript-file",
         default=None,
         help="Optional path to transcript text file (overrides automatic local caption fetch)",
@@ -133,11 +143,17 @@ def _post_execution(
     job_id: str | None,
     style: str,
     script_mode: str,
+    voice_id: str | None,
+    voice_id_b: str | None,
     source_text: str | None,
 ) -> dict:
     payload = {"source_url": source_url, "style": style, "script_mode": script_mode}
     if job_id:
         payload["job_id"] = job_id
+    if voice_id:
+        payload["voice_id"] = voice_id
+    if voice_id_b:
+        payload["voice_id_b"] = voice_id_b
     if source_text:
         payload["source_text"] = source_text
 
@@ -185,6 +201,8 @@ def main() -> None:
                 job_id=None,
                 style=args.style,
                 script_mode=args.script_mode,
+                voice_id=args.voice_id,
+                voice_id_b=args.voice_id_b,
                 source_text=source_text,
             )
         else:
@@ -194,6 +212,8 @@ def main() -> None:
                 job_id=None,
                 style=args.style,
                 script_mode=args.script_mode,
+                voice_id=args.voice_id,
+                voice_id_b=args.voice_id_b,
                 region=args.region,
                 stack_name=args.stack_name,
                 state_machine_arn=args.state_machine_arn,

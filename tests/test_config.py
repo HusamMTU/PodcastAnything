@@ -23,6 +23,7 @@ class LoadSettingsTests(unittest.TestCase):
 
         self.assertEqual("polly", settings.tts_provider)
         self.assertEqual("Joanna", settings.polly_voice_id)
+        self.assertEqual("Joanna", settings.polly_duo_voice_id)
         self.assertIsNone(settings.elevenlabs_api_key)
 
     def test_rejects_unknown_tts_provider(self) -> None:
@@ -60,6 +61,7 @@ class LoadSettingsTests(unittest.TestCase):
                 "TTS_PROVIDER": "elevenlabs",
                 "ELEVENLABS_API_KEY": "test-key",
                 "ELEVENLABS_VOICE_ID": "voice-id",
+                "ELEVENLABS_DUO_VOICE_ID": "voice-id-b",
                 "ELEVENLABS_MODEL_ID": "eleven_multilingual_v2",
                 "ELEVENLABS_OUTPUT_FORMAT": "mp3_44100_128",
             },
@@ -70,6 +72,7 @@ class LoadSettingsTests(unittest.TestCase):
         self.assertEqual("elevenlabs", settings.tts_provider)
         self.assertEqual("test-key", settings.elevenlabs_api_key)
         self.assertEqual("voice-id", settings.elevenlabs_voice_id)
+        self.assertEqual("voice-id-b", settings.elevenlabs_duo_voice_id)
         self.assertEqual("eleven_multilingual_v2", settings.elevenlabs_model_id)
         self.assertEqual("mp3_44100_128", settings.elevenlabs_output_format)
 
