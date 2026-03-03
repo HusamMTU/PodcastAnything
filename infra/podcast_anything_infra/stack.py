@@ -32,7 +32,14 @@ class PodcastAnythingStack(cdk.Stack):
         if not mp_bucket:
             raise ValueError("MP_BUCKET must be set when synthesizing the CDK app.")
 
+        tts_provider = os.environ.get("TTS_PROVIDER", "polly").strip().lower()
+        if tts_provider not in {"polly", "elevenlabs"}:
+            raise ValueError("TTS_PROVIDER must be either 'polly' or 'elevenlabs'.")
         polly_voice_id = os.environ.get("POLLY_VOICE_ID", "Joanna")
+        elevenlabs_api_key = os.environ.get("ELEVENLABS_API_KEY", "")
+        elevenlabs_voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")
+        elevenlabs_model_id = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
+        elevenlabs_output_format = os.environ.get("ELEVENLABS_OUTPUT_FORMAT", "mp3_44100_128")
 
         bucket = s3.Bucket(
             self,
@@ -48,7 +55,12 @@ class PodcastAnythingStack(cdk.Stack):
         common_env = {
             "MP_BUCKET": bucket.bucket_name,
             "BEDROCK_MODEL_ID": bedrock_model_id,
+            "TTS_PROVIDER": tts_provider,
             "POLLY_VOICE_ID": polly_voice_id,
+            "ELEVENLABS_API_KEY": elevenlabs_api_key,
+            "ELEVENLABS_VOICE_ID": elevenlabs_voice_id,
+            "ELEVENLABS_MODEL_ID": elevenlabs_model_id,
+            "ELEVENLABS_OUTPUT_FORMAT": elevenlabs_output_format,
         }
 
         deps_layer = lambda_.LayerVersion(
@@ -113,11 +125,12 @@ class PodcastAnythingStack(cdk.Stack):
         )
         rewrite_script_fn.add_to_role_policy(bedrock_policy)
 
-        polly_policy = iam.PolicyStatement(
-            actions=["polly:SynthesizeSpeech"],
-            resources=["*"],
-        )
-        generate_audio_fn.add_to_role_policy(polly_policy)
+        if tts_provider == "polly":
+            polly_policy = iam.PolicyStatement(
+                actions=["polly:SynthesizeSpeech"],
+                resources=["*"],
+            )
+            generate_audio_fn.add_to_role_policy(polly_policy)
 
         fetch_step = sfn_tasks.LambdaInvoke(
             self,

@@ -26,14 +26,27 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
     settings = load_settings()
     bucket = pipeline_event.resolved_bucket(settings.bucket)
-    voice_id = pipeline_event.voice_id or settings.polly_voice_id
+    default_voice_id = (
+        settings.elevenlabs_voice_id
+        if settings.tts_provider == "elevenlabs"
+        else settings.polly_voice_id
+    )
+    voice_id = pipeline_event.voice_id or default_voice_id
+    output_format = (
+        settings.elevenlabs_output_format if settings.tts_provider == "elevenlabs" else "mp3"
+    )
+    text_type = "text" if settings.tts_provider == "elevenlabs" else "ssml"
 
     script_text = get_text(bucket, script_key)
     audio = synthesize_speech(
         script_text,
         voice_id=voice_id,
-        text_type="ssml",
+        provider=settings.tts_provider,
+        output_format=output_format,
+        text_type=text_type,
         max_text_chars=1800,
+        elevenlabs_api_key=settings.elevenlabs_api_key,
+        elevenlabs_model_id=settings.elevenlabs_model_id,
     )
 
     audio_key = f"jobs/{job_id}/audio.mp3"

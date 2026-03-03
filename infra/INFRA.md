@@ -32,7 +32,7 @@ This directory contains the AWS CDK app for the `PodcastAnythingStack`.
 - `RewriteScriptFn` can call Bedrock:
   - `bedrock:InvokeModel`
   - `bedrock:InvokeModelWithResponseStream`
-- `GenerateAudioFn` can call Polly:
+- `GenerateAudioFn` can call Polly when `TTS_PROVIDER=polly`:
   - `polly:SynthesizeSpeech`
 - `StartExecutionApiFn` can start the deployed Step Functions state machine.
 - `GetExecutionApiFn` can call `states:DescribeExecution`.
@@ -44,6 +44,11 @@ This directory contains the AWS CDK app for the `PodcastAnythingStack`.
 
 Optional:
 - `POLLY_VOICE_ID` (default: `Joanna`)
+- `TTS_PROVIDER` (default: `polly`; supported values: `polly`, `elevenlabs`)
+- `ELEVENLABS_API_KEY` (required when `TTS_PROVIDER=elevenlabs`)
+- `ELEVENLABS_VOICE_ID` (default: `JBFqnCBsd6RMkjVDRZzb`)
+- `ELEVENLABS_MODEL_ID` (default: `eleven_multilingual_v2`)
+- `ELEVENLABS_OUTPUT_FORMAT` (default: `mp3_44100_128`)
 - `AWS_REGION` (default used by app: `us-east-1`)
 
 ## Stack Outputs
@@ -105,7 +110,7 @@ flowchart LR
   R -->|InvokeModel| BR[Bedrock Runtime]
   S3 -->|read script.txt| G
   G -->|write audio.mp3| S3
-  G -->|SynthesizeSpeech| P[Amazon Polly]
+  G -->|TTS call| T[TTS Provider (Polly or ElevenLabs)]
 ```
 
 Execution summary:
