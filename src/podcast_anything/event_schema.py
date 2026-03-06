@@ -14,6 +14,8 @@ _KNOWN_FIELDS = {
     "job_id",
     "source_url",
     "source_text",
+    "source_file_name",
+    "source_file_base64",
     "source_type",
     "title",
     "style",
@@ -67,6 +69,8 @@ class PipelineEvent:
     job_id: str | None = None
     source_url: str | None = None
     source_text: str | None = None
+    source_file_name: str | None = None
+    source_file_base64: str | None = None
     source_type: str | None = None
     title: str | None = None
     style: str = "podcast"
@@ -91,6 +95,14 @@ class PipelineEvent:
             job_id=_read_optional_string(payload.get("job_id"), "job_id"),
             source_url=_read_optional_string(payload.get("source_url"), "source_url"),
             source_text=_read_optional_string(payload.get("source_text"), "source_text"),
+            source_file_name=_read_optional_string(
+                payload.get("source_file_name"),
+                "source_file_name",
+            ),
+            source_file_base64=_read_optional_string(
+                payload.get("source_file_base64"),
+                "source_file_base64",
+            ),
             source_type=_read_optional_string(payload.get("source_type"), "source_type"),
             title=_read_optional_string(payload.get("title"), "title"),
             style=_read_optional_string(payload.get("style"), "style") or "podcast",
@@ -122,8 +134,22 @@ class PipelineEvent:
 
     def validate_for_stage(self, stage: str) -> None:
         if stage == "fetch":
-            if not self.job_id or not self.source_url:
-                raise EventSchemaError("event must include job_id and source_url")
+            has_source_url = self.source_url is not None
+            has_source_file = self.source_file_base64 is not None
+            if not self.job_id:
+                raise EventSchemaError("event must include job_id")
+            if has_source_url == has_source_file:
+                raise EventSchemaError(
+                    "event must include exactly one of source_url or source_file_base64"
+                )
+            if has_source_file and not self.source_file_name:
+                raise EventSchemaError(
+                    "event with source_file_base64 must also include source_file_name"
+                )
+            if has_source_file and self.source_text is not None:
+                raise EventSchemaError(
+                    "event with source_file_base64 cannot also include source_text"
+                )
             return
         if stage == "rewrite":
             if not self.job_id or not self.article_s3_key:
@@ -135,10 +161,10 @@ class PipelineEvent:
             return
         raise EventSchemaError(f"unsupported pipeline stage: {stage}")
 
-    def require_fetch_fields(self) -> tuple[str, str]:
+    def require_fetch_fields(self) -> tuple[str, str | None]:
         """Return required fields for the fetch stage."""
         self.validate_for_stage("fetch")
-        return cast(str, self.job_id), cast(str, self.source_url)
+        return cast(str, self.job_id), self.source_url
 
     def require_rewrite_fields(self) -> tuple[str, str]:
         """Return required fields for the rewrite stage."""
@@ -162,6 +188,8 @@ class PipelineEvent:
             ("job_id", self.job_id),
             ("source_url", self.source_url),
             ("source_text", self.source_text),
+            ("source_file_name", self.source_file_name),
+            ("source_file_base64", self.source_file_base64),
             ("source_type", self.source_type),
             ("title", self.title),
             ("style", self.style),

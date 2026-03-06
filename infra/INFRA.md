@@ -9,7 +9,7 @@ This directory contains the AWS CDK app for the `PodcastAnythingStack`.
   - `auto_delete_objects=True` and `removal_policy=DESTROY` for clean teardown.
 - `PythonDepsLayer` (Lambda Layer)
   - Built from `infra/layers/requirements.txt` using Docker during synth/deploy.
-  - Includes article parsing dependencies used by Lambda handlers.
+  - Includes article and document parsing dependencies used by Lambda handlers.
 - `FetchArticleFn` (Lambda, Python 3.11)
   - Handler: `podcast_anything.handlers.fetch_article.handler`
 - `RewriteScriptFn` (Lambda, Python 3.11)
@@ -88,7 +88,7 @@ flowchart LR
     APIGW --> GETX --> GES
   end
 
-  SE -->|Article URL| APIGW
+  SE -->|Article URL or uploaded document| APIGW
   CC -->|source_url + transcript_text| APIGW
   U -->|status request| APIGW
   APIGW -->|status response| U
@@ -98,7 +98,7 @@ flowchart LR
   SFN -->|execution status| GES
 
   subgraph PIPE[State Machine Execution Order]
-    F["FetchArticleStep<br/>Lambda: FetchArticleFn<br/>(fetch article or persist provided transcript)"]
+    F["FetchArticleStep<br/>Lambda: FetchArticleFn<br/>(fetch article, extract uploaded document, or persist provided transcript)"]
     R["RewriteScriptStep<br/>Lambda: RewriteScriptFn"]
     G["GenerateAudioStep<br/>Lambda: GenerateAudioFn"]
     F -->|event + article_s3_key| R
@@ -112,11 +112,11 @@ flowchart LR
   R -->|InvokeModel| BR[Bedrock Runtime]
   S3 -->|read script.txt| G
   G -->|write audio.mp3| S3
-  G -->|TTS call| T[TTS Provider (Polly or ElevenLabs)]
+  G -->|TTS call| T["TTS Provider<br/>Polly or ElevenLabs"]
 ```
 
 Execution summary:
-- Input event starts in Step Functions with `job_id` and `source_url`.
+- Input event starts in Step Functions with `job_id` and exactly one of `source_url` or uploaded document payload (`source_file_name` + `source_file_base64`).
 - Steps run in strict order: `fetch -> rewrite -> generate`.
 - Each step adds new keys to the event payload and passes it to the next step.
 - Final artifacts are stored under `jobs/<job_id>/` in S3.

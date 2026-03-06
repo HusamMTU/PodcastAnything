@@ -34,6 +34,8 @@ def start_execution_handler(event: dict[str, Any], _context: Any) -> dict[str, A
         result = start_pipeline_execution(
             source_url=payload.get("source_url"),
             source_text=source_text,
+            source_file_name=payload.get("source_file_name"),
+            source_file_base64=payload.get("source_file_base64"),
             job_id=payload.get("job_id"),
             style=payload.get("style", "podcast"),
             script_mode=payload.get("script_mode", "single"),

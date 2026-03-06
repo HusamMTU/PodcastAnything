@@ -5,6 +5,7 @@ Turn source content into a podcast-ready script and audio file.
 Current stage supports:
 - public article URLs
 - YouTube URLs (captions fetched locally by the CLI, then sent to AWS)
+- uploaded documents: `.pdf`, `.docx`, `.txt`
 
 The pipeline rewrites source content into a podcast script with Bedrock (`single` host or `duo` dialogue), then generates audio with a configurable TTS provider (`polly` or `elevenlabs`).
 
@@ -14,7 +15,6 @@ The pipeline rewrites source content into a podcast script with Bedrock (`single
 - [Features](#features)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
-- [YouTube Flow](#youtube-flow)
 - [API Endpoints](#api-endpoints)
 - [Development](#development)
 - [Testing](#testing)
@@ -42,6 +42,7 @@ Future inputs can include:
 - Lambda handlers for source fetch, script rewrite, and audio generation
 - API Gateway HTTP API to start executions and query status
 - API-first local CLI (`scripts/start_execution.py`)
+- Uploaded document ingestion for `.pdf`, `.docx`, and `.txt`
 - YouTube URL support without AWS-side caption scraping
   - CLI fetches captions locally when possible
   - backend receives transcript text
@@ -153,6 +154,12 @@ Article URL:
 python scripts/start_execution.py "https://example.com/article"
 ```
 
+Document upload:
+
+```bash
+python scripts/start_execution.py --source-file ./brief.pdf
+```
+
 Duo-script mode example:
 
 ```bash
@@ -170,7 +177,48 @@ python scripts/start_execution.py "https://example.com/article" \
 
 The CLI uses the deployed HTTP API (`POST /executions`) by default.
 
-## YouTube Flow
+### CLI Arguments
+
+| Argument | Optional | Description | Default | Other values |
+| --- | --- | --- | --- | --- |
+| `source` | No, unless `--source-file` is provided | Positional source URL for article or YouTube input. | None | None |
+| `--source-file` | Yes | Local document to upload; mutually exclusive with `source`. | None | `.pdf`, `.docx`, `.txt` |
+| `--style` | Yes | Style label passed into the pipeline. | `podcast` | None |
+| `--script-mode` | Yes | Script format mode. | `single` | `single`, `duo` |
+| `--voice-id` | Yes | Voice override for single mode or `HOST_A` in duo mode. | None | Provider-valid voice IDs |
+| `--voice-id-b` | Yes | Second voice override for `HOST_B` in duo mode. | None | Provider-valid voice IDs |
+| `--transcript-file` | Yes | Local transcript text file for URL inputs; overrides local YouTube caption fetch and is not allowed with `--source-file`. | None | Plain-text file paths |
+| `--mode` | Yes | Execution path. | `api` | `api`, `direct` |
+| `--region` | Yes | AWS region for API lookup or direct execution. | `AWS_REGION` or `us-east-1` | AWS region strings |
+| `--stack-name` | Yes | CloudFormation stack used to resolve outputs. | `STACK_NAME` or `PodcastAnythingStack` | Deployed stack names |
+| `--api-url` | Yes | Explicit HTTP API base URL. | `PIPELINE_API_URL` or None | API base URLs |
+| `--state-machine-arn` | Yes | Explicit Step Functions state machine ARN for direct mode. | `PIPELINE_STATE_MACHINE_ARN` or None | State machine ARNs |
+
+### Document Inputs
+
+Supported upload types:
+- `.pdf`
+- `.docx`
+- `.txt`
+
+CLI rules:
+- Provide exactly one source input: positional `source` URL or `--source-file <path>`.
+- `--transcript-file` is only valid with a source URL and is mainly for YouTube inputs.
+
+API rules:
+- Provide exactly one of `source_url` or `source_file_name` + `source_file_base64`.
+- `source_text` / `transcript_text` is for URL-based inputs and cannot be combined with uploaded documents.
+
+Document processing behavior:
+- The fetch step extracts document text, normalizes it, and stores the result in `jobs/<job_id>/source.txt`.
+- `source_type` is set to `pdf`, `docx`, or `txt` for uploaded documents.
+
+Current size limitation:
+- The current API passes document bytes as base64 in the execution input.
+- Keep uploaded documents small enough to fit API Gateway, Lambda, and Step Functions payload limits.
+- For larger future UI uploads, a presigned S3 upload flow is the right next step.
+
+### YouTube Flow
 
 AWS-side YouTube caption fetching is intentionally disabled.
 
@@ -211,12 +259,14 @@ The stack deploys an HTTP API with:
 Starts a Step Functions execution.
 
 Body fields:
-- `source_url` (required): article URL or YouTube URL
+- exactly one of:
+  - `source_url`: article URL or YouTube URL
+  - `source_file_name` + `source_file_base64`: uploaded `.pdf`, `.docx`, or `.txt` document
 - `style` (optional, default `podcast`)
 - `script_mode` (optional, default `single`; allowed: `single`, `duo`)
 - `voice_id` (optional): voice override; in duo mode this is `HOST_A`
 - `voice_id_b` (optional): second voice override for `HOST_B` in duo mode
-- `source_text` or `transcript_text` (required for YouTube URLs; optional for other sources)
+- `source_text` or `transcript_text` (required for YouTube URLs; optional for other URL sources; not allowed with uploaded documents)
 - `state_machine_arn` (optional override)
 
 ### `GET /executions`
@@ -249,6 +299,13 @@ curl -sS -X POST "$API_URL/executions" \
 ```
 
 ```bash
+DOC_B64="$(base64 < ./brief.txt | tr -d '\n')"
+curl -sS -X POST "$API_URL/executions" \
+  -H "content-type: application/json" \
+  -d "{\"source_file_name\":\"brief.txt\",\"source_file_base64\":\"$DOC_B64\",\"style\":\"podcast\"}"
+```
+
+```bash
 curl -sS "$API_URL/executions?execution_arn=<execution-arn>"
 ```
 
@@ -260,6 +317,7 @@ curl -sS "$API_URL/executions?execution_arn=<execution-arn>"
 - `src/podcast_anything/handlers/` Lambda handlers
 - `src/podcast_anything/api/` API service + API Gateway Lambda handlers
 - `src/podcast_anything/event_schema.py` typed pipeline event schema
+- `src/podcast_anything/document.py` uploaded document extraction helpers
 - `src/podcast_anything/youtube.py` YouTube URL parsing + local transcript helpers
 - `scripts/start_execution.py` local execution launcher (API-first)
 - `scripts/fetch_youtube_transcript.py` optional local transcript helper
@@ -275,7 +333,7 @@ The pipeline stores artifacts under `jobs/<job_id>/`:
 - `jobs/<job_id>/script.json`
 - `jobs/<job_id>/audio.mp3`
 
-`source.txt` stores normalized source text for both article and YouTube transcript inputs.
+`source.txt` stores normalized source text for article URLs, YouTube transcript inputs, and uploaded documents.
 
 ### Script Modes
 
@@ -319,7 +377,7 @@ Stack name:
 
 Primary resources:
 - S3 artifacts bucket
-- Lambda dependency layer (`requests`, `beautifulsoup4`)
+- Lambda dependency layer (`requests`, `beautifulsoup4`, `pypdf`, `docx2txt`)
 - Lambda functions: `FetchArticleFn`, `RewriteScriptFn`, `GenerateAudioFn`
 - API Lambda functions: `StartExecutionApiFn`, `GetExecutionApiFn`
 - Step Functions state machine: `PipelineStateMachine`
@@ -354,6 +412,12 @@ See `infra/INFRA.md` for details and the architecture sketch.
 - Local YouTube caption fetch fails in `scripts/start_execution.py`
   - The video may not have captions, captions may be restricted, or YouTube may be rate-limiting/blocking your network.
   - Retry later or use `--transcript-file`.
+- Document execution start fails with source validation
+  - Provide exactly one of `source_url` or `source_file_name` + `source_file_base64`.
+  - Do not send `source_text` / `transcript_text` with uploaded documents.
+- Uploaded document parsing fails
+  - Supported types are `.pdf`, `.docx`, and `.txt`.
+  - Confirm the file contains readable text; image-only PDFs are not OCR'd in the current pipeline.
 - S3 bucket creation fails with `BucketAlreadyExists`
   - Update `MP_BUCKET` to a globally unique name (for example include account ID + region).
 - CDK warns it cannot assume bootstrap roles but proceeds
