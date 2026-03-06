@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import unittest
 from unittest.mock import Mock, patch
 
@@ -10,9 +11,20 @@ from podcast_anything.handlers import fetch_article, generate_audio, rewrite_scr
 
 
 class FetchArticleHandlerTests(unittest.TestCase):
-    def test_requires_job_id_and_source_url(self) -> None:
-        with self.assertRaisesRegex(ValueError, "job_id and source_url"):
+    def test_requires_job_id_and_one_source_input(self) -> None:
+        with self.assertRaisesRegex(ValueError, "job_id"):
             fetch_article.handler({}, None)
+
+        with self.assertRaisesRegex(ValueError, "exactly one of source_url or source_file_base64"):
+            fetch_article.handler(
+                {
+                    "job_id": "job-1",
+                    "source_url": "https://example.com/post",
+                    "source_file_name": "notes.txt",
+                    "source_file_base64": "aGVsbG8=",
+                },
+                None,
+            )
 
     @patch("podcast_anything.handlers.fetch_article.put_text")
     @patch("podcast_anything.handlers.fetch_article.youtube.is_youtube_url", return_value=False)
@@ -52,6 +64,46 @@ class FetchArticleHandlerTests(unittest.TestCase):
         self.assertEqual("article", result["source_type"])
         self.assertEqual(expected_key, result["article_s3_key"])
         self.assertEqual(len("clean article text"), result["article_char_count"])
+
+    @patch("podcast_anything.handlers.fetch_article.put_text")
+    @patch(
+        "podcast_anything.handlers.fetch_article.document.extract_text_from_bytes",
+        return_value=("uploaded document text", "pdf"),
+    )
+    @patch("podcast_anything.handlers.fetch_article.article.fetch_html")
+    @patch("podcast_anything.handlers.fetch_article.load_settings")
+    def test_extracts_and_stores_uploaded_document(
+        self,
+        mock_settings: Mock,
+        mock_fetch_html: Mock,
+        mock_extract_document: Mock,
+        mock_put_text: Mock,
+    ) -> None:
+        mock_settings.return_value = Settings(
+            bucket="default-bucket",
+            region="us-east-1",
+            bedrock_model_id="amazon.nova-lite-v1:0",
+            polly_voice_id="Joanna",
+        )
+        encoded_file = base64.b64encode(b"fake-pdf-bytes").decode("ascii")
+        event = {
+            "job_id": "job-doc-1",
+            "source_file_name": "brief.pdf",
+            "source_file_base64": encoded_file,
+        }
+
+        result = fetch_article.handler(event, None)
+
+        mock_extract_document.assert_called_once_with(b"fake-pdf-bytes", "brief.pdf")
+        mock_fetch_html.assert_not_called()
+        mock_put_text.assert_called_once_with(
+            "default-bucket",
+            "jobs/job-doc-1/source.txt",
+            "uploaded document text",
+        )
+        self.assertEqual("pdf", result["source_type"])
+        self.assertEqual("jobs/job-doc-1/source.txt", result["article_s3_key"])
+        self.assertNotIn("source_file_base64", result)
 
     @patch("podcast_anything.handlers.fetch_article.youtube.is_youtube_url", return_value=True)
     @patch("podcast_anything.handlers.fetch_article.load_settings")
@@ -110,6 +162,23 @@ class FetchArticleHandlerTests(unittest.TestCase):
         )
         self.assertEqual("youtube", result["source_type"])
         self.assertNotIn("source_text", result)
+
+    @patch("podcast_anything.handlers.fetch_article.load_settings")
+    def test_rejects_invalid_uploaded_document_base64(self, mock_settings: Mock) -> None:
+        mock_settings.return_value = Settings(
+            bucket="default-bucket",
+            region="us-east-1",
+            bedrock_model_id="amazon.nova-lite-v1:0",
+            polly_voice_id="Joanna",
+        )
+        event = {
+            "job_id": "job-doc-2",
+            "source_file_name": "brief.pdf",
+            "source_file_base64": "not valid base64",
+        }
+
+        with self.assertRaisesRegex(ValueError, "source_file_base64 is not valid base64"):
+            fetch_article.handler(event, None)
 
 
 class RewriteScriptHandlerTests(unittest.TestCase):

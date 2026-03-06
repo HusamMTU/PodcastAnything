@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import uuid
@@ -71,8 +72,30 @@ def _generate_job_id() -> str:
     return f"job-{timestamp}-{short_suffix}"
 
 
-def _validate_source_inputs(*, source_url: str, source_text: str | None) -> None:
-    if is_youtube_url(source_url) and not source_text:
+def _validate_source_inputs(
+    *,
+    source_url: str | None,
+    source_text: str | None,
+    source_file_name: str | None,
+    source_file_base64: str | None,
+) -> None:
+    has_source_url = source_url is not None
+    has_source_file = source_file_base64 is not None
+    if has_source_url == has_source_file:
+        raise PipelineApiError("provide exactly one of source_url or source_file_base64")
+
+    if has_source_file and not source_file_name:
+        raise PipelineApiError("source_file_name is required when source_file_base64 is provided")
+    if has_source_file and source_text is not None:
+        raise PipelineApiError("source_text cannot be used with source_file_base64")
+
+    if source_file_base64:
+        try:
+            base64.b64decode(source_file_base64, validate=True)
+        except ValueError as exc:
+            raise PipelineApiError("source_file_base64 must be valid base64") from exc
+
+    if source_url and is_youtube_url(source_url) and not source_text:
         raise PipelineApiError(
             "YouTube URLs require transcript text in `source_text` (or API alias "
             "`transcript_text`). AWS-side YouTube transcript fetch is disabled."
@@ -99,6 +122,19 @@ def _normalize_optional_voice_id(value: str | None, field_name: str) -> str | No
     return cleaned
 
 
+def _normalize_optional_source_file_name(value: str | None) -> str | None:
+    return _normalize_optional_voice_id(value, "source_file_name")
+
+
+def _normalize_optional_source_url(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise PipelineApiError("field must be a string: source_url")
+    cleaned = value.strip()
+    return cleaned or None
+
+
 def resolve_state_machine_arn(*, cloudformation: Any, stack_name: str) -> str:
     try:
         response = cloudformation.describe_stacks(StackName=stack_name)
@@ -121,8 +157,10 @@ def resolve_state_machine_arn(*, cloudformation: Any, stack_name: str) -> str:
 
 def start_pipeline_execution(
     *,
-    source_url: str,
+    source_url: str | None = None,
     source_text: str | None = None,
+    source_file_name: str | None = None,
+    source_file_base64: str | None = None,
     job_id: str | None = None,
     style: str = "podcast",
     script_mode: str = "single",
@@ -132,9 +170,15 @@ def start_pipeline_execution(
     stack_name: str | None = None,
     state_machine_arn: str | None = None,
 ) -> dict[str, Any]:
-    cleaned_source_url = _require_non_empty(source_url, "source_url")
+    cleaned_source_url = _normalize_optional_source_url(source_url)
     cleaned_source_text = (
         source_text.strip() if isinstance(source_text, str) and source_text.strip() else None
+    )
+    cleaned_source_file_name = _normalize_optional_source_file_name(source_file_name)
+    cleaned_source_file_base64 = (
+        source_file_base64.strip()
+        if isinstance(source_file_base64, str) and source_file_base64.strip()
+        else None
     )
     cleaned_job_id = job_id.strip() if isinstance(job_id, str) and job_id.strip() else None
     cleaned_style = style.strip() if isinstance(style, str) and style.strip() else "podcast"
@@ -154,17 +198,27 @@ def start_pipeline_execution(
         if isinstance(state_machine_arn, str) and state_machine_arn.strip()
         else _default_state_machine_arn()
     )
-    _validate_source_inputs(source_url=cleaned_source_url, source_text=cleaned_source_text)
+    _validate_source_inputs(
+        source_url=cleaned_source_url,
+        source_text=cleaned_source_text,
+        source_file_name=cleaned_source_file_name,
+        source_file_base64=cleaned_source_file_base64,
+    )
 
     resolved_job_id = cleaned_job_id or _generate_job_id()
     payload = {
         "job_id": resolved_job_id,
-        "source_url": cleaned_source_url,
         "style": cleaned_style,
         "script_mode": cleaned_script_mode,
     }
+    if cleaned_source_url:
+        payload["source_url"] = cleaned_source_url
     if cleaned_source_text:
         payload["source_text"] = cleaned_source_text
+    if cleaned_source_file_name:
+        payload["source_file_name"] = cleaned_source_file_name
+    if cleaned_source_file_base64:
+        payload["source_file_base64"] = cleaned_source_file_base64
     if cleaned_voice_id:
         payload["voice_id"] = cleaned_voice_id
     if cleaned_voice_id_b:
@@ -190,6 +244,7 @@ def start_pipeline_execution(
     return {
         "job_id": resolved_job_id,
         "source_url": cleaned_source_url,
+        "source_file_name": cleaned_source_file_name,
         "style": cleaned_style,
         "script_mode": cleaned_script_mode,
         "voice_id": cleaned_voice_id,

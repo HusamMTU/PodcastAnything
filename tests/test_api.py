@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import unittest
 from datetime import datetime, timezone
@@ -40,6 +41,40 @@ class ApiServiceTests(unittest.TestCase):
             start_pipeline_execution(
                 source_url="https://example.com/article",
                 voice_id_b="   ",
+                state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
+                region="us-east-1",
+            )
+
+    def test_start_pipeline_execution_rejects_conflicting_source_inputs(self) -> None:
+        with self.assertRaisesRegex(
+            PipelineApiError,
+            "exactly one of source_url or source_file_base64",
+        ):
+            start_pipeline_execution(
+                source_url="https://example.com/article",
+                source_file_name="brief.txt",
+                source_file_base64=base64.b64encode(b"hello").decode("ascii"),
+                state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
+                region="us-east-1",
+            )
+
+    def test_start_pipeline_execution_rejects_document_without_name(self) -> None:
+        with self.assertRaisesRegex(PipelineApiError, "source_file_name is required"):
+            start_pipeline_execution(
+                source_file_base64=base64.b64encode(b"hello").decode("ascii"),
+                state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
+                region="us-east-1",
+            )
+
+    def test_start_pipeline_execution_rejects_source_text_with_document(self) -> None:
+        with self.assertRaisesRegex(
+            PipelineApiError,
+            "source_text cannot be used with source_file_base64",
+        ):
+            start_pipeline_execution(
+                source_file_name="brief.txt",
+                source_file_base64=base64.b64encode(b"hello").decode("ascii"),
+                source_text="ignored",
                 state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
                 region="us-east-1",
             )
@@ -104,6 +139,34 @@ class ApiServiceTests(unittest.TestCase):
 
         payload = json.loads(mock_sf.start_execution.call_args.kwargs["input"])
         self.assertEqual("provided transcript", payload["source_text"])
+
+    @patch("podcast_anything.api.service.boto3.session.Session")
+    def test_start_pipeline_execution_accepts_uploaded_document(
+        self, mock_session_cls: Mock
+    ) -> None:
+        mock_session = Mock()
+        mock_sf = Mock()
+        mock_sf.start_execution.return_value = {
+            "executionArn": "arn:aws:states:us-east-1:123:execution:sm:exec-3",
+            "startDate": datetime(2026, 1, 3, tzinfo=timezone.utc),
+        }
+        mock_session.client.return_value = mock_sf
+        mock_session_cls.return_value = mock_session
+
+        encoded = base64.b64encode(b"hello from document").decode("ascii")
+        result = start_pipeline_execution(
+            source_file_name="brief.txt",
+            source_file_base64=encoded,
+            state_machine_arn="arn:aws:states:us-east-1:123:stateMachine:sm",
+            region="us-east-1",
+        )
+
+        payload = json.loads(mock_sf.start_execution.call_args.kwargs["input"])
+        self.assertEqual("brief.txt", payload["source_file_name"])
+        self.assertEqual(encoded, payload["source_file_base64"])
+        self.assertNotIn("source_url", payload)
+        self.assertEqual("brief.txt", result["source_file_name"])
+        self.assertIsNone(result["source_url"])
 
     @patch("podcast_anything.api.service.boto3.session.Session")
     def test_start_pipeline_execution_resolves_state_machine_arn_from_stack(
@@ -263,6 +326,28 @@ class ApiHandlerTests(unittest.TestCase):
         mock_start.assert_called_once()
         self.assertEqual("Joanna", mock_start.call_args.kwargs["voice_id"])
         self.assertEqual("Matthew", mock_start.call_args.kwargs["voice_id_b"])
+
+    @patch("podcast_anything.api.handlers.start_pipeline_execution")
+    def test_start_execution_handler_forwards_uploaded_document_fields(
+        self, mock_start: Mock
+    ) -> None:
+        mock_start.return_value = {"job_id": "job-1", "execution_arn": "arn:execution"}
+        encoded = base64.b64encode(b"hello from document").decode("ascii")
+        event = {
+            "body": json.dumps(
+                {
+                    "source_file_name": "brief.txt",
+                    "source_file_base64": encoded,
+                }
+            )
+        }
+
+        response = handlers.start_execution_handler(event, None)
+
+        self.assertEqual(202, response["statusCode"])
+        mock_start.assert_called_once()
+        self.assertEqual("brief.txt", mock_start.call_args.kwargs["source_file_name"])
+        self.assertEqual(encoded, mock_start.call_args.kwargs["source_file_base64"])
 
     def test_start_execution_handler_rejects_youtube_without_transcript(self) -> None:
         event = {

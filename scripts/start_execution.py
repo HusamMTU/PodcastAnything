@@ -8,9 +8,11 @@ Optional direct mode calls Step Functions directly.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import sys
+from pathlib import Path
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
@@ -23,7 +25,16 @@ from podcast_anything.youtube import YouTubeTranscriptError, fetch_transcript_te
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Start a Podcast Anything pipeline execution.")
-    parser.add_argument("source_url", help="Source URL to process (article or YouTube)")
+    parser.add_argument(
+        "source",
+        nargs="?",
+        help="Source URL to process (article or YouTube)",
+    )
+    parser.add_argument(
+        "--source-file",
+        default=None,
+        help="Optional local source document to upload (.pdf, .docx, .txt)",
+    )
     parser.add_argument(
         "--style",
         default="podcast",
@@ -112,7 +123,35 @@ def _read_transcript_file(path: str | None) -> str | None:
     return text
 
 
-def _resolve_source_text(*, source_url: str, transcript_file: str | None) -> str | None:
+def _read_source_file_payload(path: str | None) -> tuple[str, str] | None:
+    if not path:
+        return None
+    file_path = Path(path)
+    if not file_path.is_file():
+        raise RuntimeError(f"Source file was not found: {path}")
+    file_bytes = file_path.read_bytes()
+    if not file_bytes:
+        raise RuntimeError(f"Source file is empty: {path}")
+    encoded = base64.b64encode(file_bytes).decode("ascii")
+    return file_path.name, encoded
+
+
+def _resolve_source_input(
+    *,
+    source: str | None,
+    source_file: str | None,
+) -> tuple[str | None, tuple[str, str] | None]:
+    if bool(source) == bool(source_file):
+        raise RuntimeError("Provide exactly one of a source URL or --source-file <path>.")
+    if source_file:
+        return None, _read_source_file_payload(source_file)
+    return source, None
+
+
+def _resolve_source_text(*, source_url: str | None, transcript_file: str | None) -> str | None:
+    if not source_url:
+        return None
+
     file_text = _read_transcript_file(transcript_file)
     if file_text is not None:
         return file_text
@@ -139,7 +178,9 @@ def _resolve_source_text(*, source_url: str, transcript_file: str | None) -> str
 def _post_execution(
     *,
     api_url: str,
-    source_url: str,
+    source_url: str | None,
+    source_file_name: str | None,
+    source_file_base64: str | None,
     job_id: str | None,
     style: str,
     script_mode: str,
@@ -147,7 +188,13 @@ def _post_execution(
     voice_id_b: str | None,
     source_text: str | None,
 ) -> dict:
-    payload = {"source_url": source_url, "style": style, "script_mode": script_mode}
+    payload = {"style": style, "script_mode": script_mode}
+    if source_url:
+        payload["source_url"] = source_url
+    if source_file_name:
+        payload["source_file_name"] = source_file_name
+    if source_file_base64:
+        payload["source_file_base64"] = source_file_base64
     if job_id:
         payload["job_id"] = job_id
     if voice_id:
@@ -185,10 +232,18 @@ def main() -> None:
     args = _parse_args()
 
     try:
+        source_url, source_file_payload = _resolve_source_input(
+            source=args.source,
+            source_file=args.source_file,
+        )
+        if source_file_payload and args.transcript_file:
+            raise RuntimeError("--transcript-file can only be used with a source URL.")
         source_text = _resolve_source_text(
-            source_url=args.source_url,
+            source_url=source_url,
             transcript_file=args.transcript_file,
         )
+        source_file_name = source_file_payload[0] if source_file_payload else None
+        source_file_base64 = source_file_payload[1] if source_file_payload else None
         if args.mode == "api":
             api_url = args.api_url or _resolve_stack_output(
                 region=args.region,
@@ -197,7 +252,9 @@ def main() -> None:
             )
             response = _post_execution(
                 api_url=api_url,
-                source_url=args.source_url,
+                source_url=source_url,
+                source_file_name=source_file_name,
+                source_file_base64=source_file_base64,
                 job_id=None,
                 style=args.style,
                 script_mode=args.script_mode,
@@ -207,8 +264,10 @@ def main() -> None:
             )
         else:
             response = start_pipeline_execution(
-                source_url=args.source_url,
+                source_url=source_url,
                 source_text=source_text,
+                source_file_name=source_file_name,
+                source_file_base64=source_file_base64,
                 job_id=None,
                 style=args.style,
                 script_mode=args.script_mode,

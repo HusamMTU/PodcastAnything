@@ -9,8 +9,28 @@ from podcast_anything.event_schema import EventSchemaError, PipelineEvent
 
 class PipelineEventTests(unittest.TestCase):
     def test_validates_stage_requirements(self) -> None:
-        with self.assertRaisesRegex(EventSchemaError, "job_id and source_url"):
+        with self.assertRaisesRegex(EventSchemaError, "job_id"):
             PipelineEvent.from_dict({}, stage="fetch")
+
+        with self.assertRaisesRegex(
+            EventSchemaError,
+            "exactly one of source_url or source_file_base64",
+        ):
+            PipelineEvent.from_dict({"job_id": "job-1"}, stage="fetch")
+
+        with self.assertRaisesRegex(
+            EventSchemaError,
+            "exactly one of source_url or source_file_base64",
+        ):
+            PipelineEvent.from_dict(
+                {
+                    "job_id": "job-1",
+                    "source_url": "https://example.com/article",
+                    "source_file_name": "notes.txt",
+                    "source_file_base64": "aGVsbG8=",
+                },
+                stage="fetch",
+            )
 
         with self.assertRaisesRegex(EventSchemaError, "job_id and article_s3_key"):
             PipelineEvent.from_dict({"job_id": "job-1"}, stage="rewrite")
@@ -58,6 +78,31 @@ class PipelineEventTests(unittest.TestCase):
         self.assertEqual("duo", event.script_mode)
         self.assertEqual("Matthew", event.voice_id_b)
 
+    def test_accepts_uploaded_document_fetch_events(self) -> None:
+        event = PipelineEvent.from_dict(
+            {
+                "job_id": "job-1",
+                "source_file_name": "brief.pdf",
+                "source_file_base64": "aGVsbG8=",
+            },
+            stage="fetch",
+        )
+
+        self.assertEqual("brief.pdf", event.source_file_name)
+        self.assertEqual("aGVsbG8=", event.source_file_base64)
+
+    def test_rejects_source_text_with_uploaded_document(self) -> None:
+        with self.assertRaisesRegex(EventSchemaError, "cannot also include source_text"):
+            PipelineEvent.from_dict(
+                {
+                    "job_id": "job-1",
+                    "source_file_name": "brief.pdf",
+                    "source_file_base64": "aGVsbG8=",
+                    "source_text": "ignored text",
+                },
+                stage="fetch",
+            )
+
     def test_stage_require_helpers_return_required_fields(self) -> None:
         fetch_event = PipelineEvent.from_dict(
             {"job_id": "job-1", "source_url": "https://example.com/article"}
@@ -66,6 +111,15 @@ class PipelineEventTests(unittest.TestCase):
             ("job-1", "https://example.com/article"),
             fetch_event.require_fetch_fields(),
         )
+
+        file_fetch_event = PipelineEvent.from_dict(
+            {
+                "job_id": "job-file",
+                "source_file_name": "brief.pdf",
+                "source_file_base64": "aGVsbG8=",
+            }
+        )
+        self.assertEqual(("job-file", None), file_fetch_event.require_fetch_fields())
 
         rewrite_event = PipelineEvent.from_dict(
             {"job_id": "job-2", "article_s3_key": "jobs/job-2/source.txt"}

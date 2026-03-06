@@ -3,19 +3,19 @@ Podcast Anything
 
 Goal
 Build an AWS-first system for turning inputs into podcast episodes.
-Current stage takes an article URL or a YouTube video URL plus transcript text, rewrites it into a podcast script with an LLM (`single` or `duo` mode), and generates podcast audio with TTS.
+Current stage takes an article URL, a YouTube video URL plus transcript text, or an uploaded document (`.pdf`, `.docx`, `.txt`), rewrites it into a podcast script with an LLM (`single` or `duo` mode), and generates podcast audio with TTS.
 
 Current Scope (Implemented)
-- Input: Public article URL, or YouTube video URL with caller-provided transcript/source text (`source_text`)
+- Input: Public article URL, YouTube video URL with caller-provided transcript/source text (`source_text`), or uploaded document bytes (`source_file_name` + `source_file_base64`) for `.pdf`, `.docx`, `.txt`
 - Output: Podcast script text + MP3 audio
 - Orchestration: Step Functions state machine
-- Execution helper script: `scripts/start_execution.py` (API-first, direct Step Functions fallback; auto-fetches YouTube captions locally when possible)
+- Execution helper script: `scripts/start_execution.py` (API-first, direct Step Functions fallback; auto-fetches YouTube captions locally when possible; supports `--source-file`)
 - API endpoints: `POST /executions` and `GET /executions`
 - Not implemented yet: DynamoDB job tracking
 
 High-Level Flow
-1. Submit an event with `source_url`; the service generates `job_id` automatically.
-2. Fetch and clean source text (article body), or accept caller-provided source/transcript text.
+1. Submit an event with `source_url` or uploaded document payload; the service generates `job_id` automatically.
+2. Fetch and clean source text (article body), extract uploaded document text, or accept caller-provided source/transcript text.
 3. Rewrite source text into podcast script text with Bedrock.
 4. Generate audio from script with the configured TTS provider (Polly or ElevenLabs, with chunked synthesis).
 5. Store artifacts in S3 under the job prefix.
@@ -43,8 +43,10 @@ Data Contract (S3 Paths)
 Input Event Contract
 {
   "job_id": "uuid-or-string",
-  "source_url": "https://example.com/article",
-  "source_text": "optional raw source/transcript text",
+  "source_url": "optional URL source; mutually exclusive with source_file_base64",
+  "source_text": "optional raw source/transcript text for URL-based inputs only",
+  "source_file_name": "required when source_file_base64 is present",
+  "source_file_base64": "optional base64-encoded uploaded .pdf/.docx/.txt; mutually exclusive with source_url and source_text",
   "title": "optional title",
   "style": "podcast",
   "script_mode": "single | duo (default: single)",
@@ -65,7 +67,7 @@ Script Metadata Contract (`script.json`)
 }
 
 Handler Contracts
-- `fetch_article`: reads `job_id`, `source_url`; fetches article text or uses provided `source_text`; writes `source.txt`; returns `article_s3_key` and inferred `source_type`
+- `fetch_article`: reads `job_id` and exactly one of `source_url` or `source_file_base64`; fetches article text, extracts uploaded document text, or uses provided `source_text`; writes `source.txt`; returns `article_s3_key` and inferred `source_type`
 - `rewrite_script`: reads `job_id`, `article_s3_key`; writes `script.txt` and `script.json`; returns `script_s3_key`
   - script mode:
     - `single`: single-host narrative script
@@ -91,11 +93,12 @@ Infrastructure (CDK)
 - Adds Polly permissions only when `TTS_PROVIDER=polly`
 
 Assumptions
-- Article is publicly accessible and text-heavy, or caller can provide transcript text for video inputs
+- Article is publicly accessible and text-heavy, caller can provide transcript text for video inputs, or uploaded documents are text-bearing `.pdf`, `.docx`, or `.txt`
 - English content first
 - Script output can be `single` or `duo`; TTS supports per-turn duo voices when script lines are `HOST_A:` / `HOST_B:` labeled
+- Uploaded documents are small enough to fit current API/Lambda/Step Functions request size limits; larger document uploads should move to a presigned S3 flow
 
 Planned Next
 - DynamoDB status tracking
-- Additional source types beyond article links and YouTube videos
+- Presigned S3 upload flow for larger documents
 - Multi-speaker output and richer audio formatting
