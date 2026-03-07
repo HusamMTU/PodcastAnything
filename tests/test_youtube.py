@@ -39,7 +39,7 @@ class YouTubeUrlTests(unittest.TestCase):
         side_effect=RuntimeError("YouTube is blocking requests from your IP"),
     )
     def test_returns_clean_error_when_youtube_blocks_cloud_ip(self, _mock_fetch: object) -> None:
-        with self.assertRaisesRegex(YouTubeTranscriptError, "blocked from this AWS/Lambda network"):
+        with self.assertRaisesRegex(YouTubeTranscriptError, "blocked from this local network"):
             fetch_transcript_text("https://www.youtube.com/watch?v=abc123XYZ00")
 
 

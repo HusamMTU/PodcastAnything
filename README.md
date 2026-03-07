@@ -44,7 +44,7 @@ Future inputs can include:
 - API-first local CLI (`scripts/start_execution.py`)
 - Uploaded document ingestion for `.pdf`, `.docx`, and `.txt`
 - YouTube URL support without AWS-side caption scraping
-  - CLI fetches captions locally when possible
+  - CLI fetches captions locally when possible and sends them to AWS as `source_text`
   - backend receives transcript text
 - Script mode selection: `single` host or `duo` dialogue (`HOST_A` / `HOST_B`)
 - Configurable TTS provider: Polly (SSML + `generative` engine) or ElevenLabs HTTP API
@@ -187,7 +187,6 @@ The CLI uses the deployed HTTP API (`POST /executions`) by default.
 | `--script-mode` | Yes | Script format mode. | `single` | `single`, `duo` |
 | `--voice-id` | Yes | Voice override for single mode or `HOST_A` in duo mode. | None | Provider-valid voice IDs |
 | `--voice-id-b` | Yes | Second voice override for `HOST_B` in duo mode. | None | Provider-valid voice IDs |
-| `--transcript-file` | Yes | Local transcript text file for URL inputs; overrides local YouTube caption fetch and is not allowed with `--source-file`. | None | Plain-text file paths |
 | `--mode` | Yes | Execution path. | `api` | `api`, `direct` |
 | `--region` | Yes | AWS region for API lookup or direct execution. | `AWS_REGION` or `us-east-1` | AWS region strings |
 | `--stack-name` | Yes | CloudFormation stack used to resolve outputs. | `STACK_NAME` or `PodcastAnythingStack` | Deployed stack names |
@@ -203,7 +202,6 @@ Supported upload types:
 
 CLI rules:
 - Provide exactly one source input: positional `source` URL or `--source-file <path>`.
-- `--transcript-file` is only valid with a source URL and is mainly for YouTube inputs.
 
 API rules:
 - Provide exactly one of `source_url` or `source_file_name` + `source_file_base64`.
@@ -224,29 +222,18 @@ AWS-side YouTube caption fetching is intentionally disabled.
 
 For a YouTube URL, `scripts/start_execution.py` will:
 - try to fetch captions locally on your machine
-- send transcript text to the API/backend
+- send the fetched captions to the API/backend as `source_text`
 - start the Step Functions execution
 
 URL-only example:
 
 ```bash
-python scripts/start_execution.py "https://www.youtube.com/watch?v=7eNey0TN2pw"
+python scripts/start_execution.py "https://www.youtube.com/watch?v=1ThNUvaImnw"
 ```
 
-If local caption fetch fails (captions unavailable/restricted or local network blocked), use a transcript file:
+If local caption fetch fails (captions unavailable/restricted or local network blocked), the CLI exits with an error and does not start the AWS pipeline.
 
-```bash
-python scripts/start_execution.py "https://www.youtube.com/watch?v=7eNey0TN2pw" \
-  --transcript-file ./my_transcript.txt
-```
-
-Optional helper to fetch/save captions locally:
-
-```bash
-python scripts/fetch_youtube_transcript.py "https://www.youtube.com/watch?v=7eNey0TN2pw"
-```
-
-You can also use `yt-dlp` locally and pass the resulting plain-text transcript with `--transcript-file`.
+Direct API callers must do the equivalent client-side caption fetch themselves and send the resulting transcript as `source_text` (or the accepted alias `transcript_text`).
 
 ## API Endpoints
 
@@ -266,7 +253,9 @@ Body fields:
 - `script_mode` (optional, default `single`; allowed: `single`, `duo`)
 - `voice_id` (optional): voice override; in duo mode this is `HOST_A`
 - `voice_id_b` (optional): second voice override for `HOST_B` in duo mode
-- `source_text` or `transcript_text` (required for YouTube URLs; optional for other URL sources; not allowed with uploaded documents)
+- `source_text` (required for YouTube URLs; optional for other URL sources; not allowed with uploaded documents)
+  - `transcript_text` is accepted as an API alias
+  - `scripts/start_execution.py` populates `source_text` automatically for YouTube URLs after fetching captions locally
 - `state_machine_arn` (optional override)
 
 ### `GET /executions`
@@ -295,7 +284,7 @@ curl -sS -X POST "$API_URL/executions" \
 ```bash
 curl -sS -X POST "$API_URL/executions" \
   -H "content-type: application/json" \
-  -d '{"source_url":"https://www.youtube.com/watch?v=7eNey0TN2pw","transcript_text":"<paste transcript here>","style":"podcast"}'
+  -d '{"source_url":"https://www.youtube.com/watch?v=7eNey0TN2pw","source_text":"<paste transcript here>","style":"podcast"}'
 ```
 
 ```bash
@@ -318,9 +307,8 @@ curl -sS "$API_URL/executions?execution_arn=<execution-arn>"
 - `src/podcast_anything/api/` API service + API Gateway Lambda handlers
 - `src/podcast_anything/event_schema.py` typed pipeline event schema
 - `src/podcast_anything/document.py` uploaded document extraction helpers
-- `src/podcast_anything/youtube.py` YouTube URL parsing + local transcript helpers
+- `src/podcast_anything/youtube.py` YouTube URL parsing + local transcript fetch helpers
 - `scripts/start_execution.py` local execution launcher (API-first)
-- `scripts/fetch_youtube_transcript.py` optional local transcript helper
 - `infra/` CDK app (Python)
 - `infra/INFRA.md` infra breakdown + architecture sketch
 - `SYSTEM.md` system contracts / architecture notes
@@ -333,7 +321,7 @@ The pipeline stores artifacts under `jobs/<job_id>/`:
 - `jobs/<job_id>/script.json`
 - `jobs/<job_id>/audio.mp3`
 
-`source.txt` stores normalized source text for article URLs, YouTube transcript inputs, and uploaded documents.
+`source.txt` stores normalized source text for article URLs, locally fetched YouTube transcript inputs, and uploaded documents.
 
 ### Script Modes
 
@@ -408,10 +396,10 @@ See `infra/INFRA.md` for details and the architecture sketch.
   - Confirm model access is enabled for your account/region and `BEDROCK_MODEL_ID` is valid in that region.
 - YouTube execution start fails with transcript-related validation
   - The backend requires transcript text for YouTube URLs.
-  - Use `scripts/start_execution.py` (it auto-fetches locally) or pass `transcript_text` / `source_text` directly to the API.
+  - Use `scripts/start_execution.py` (it auto-fetches locally) or pass `source_text` directly to the API (`transcript_text` is also accepted as an alias).
 - Local YouTube caption fetch fails in `scripts/start_execution.py`
   - The video may not have captions, captions may be restricted, or YouTube may be rate-limiting/blocking your network.
-  - Retry later or use `--transcript-file`.
+  - Retry later or try again from a different local network.
 - Document execution start fails with source validation
   - Provide exactly one of `source_url` or `source_file_name` + `source_file_base64`.
   - Do not send `source_text` / `transcript_text` with uploaded documents.
