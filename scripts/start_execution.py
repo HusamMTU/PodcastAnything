@@ -57,11 +57,6 @@ def _parse_args() -> argparse.Namespace:
         help="Optional second voice override for HOST_B in duo mode",
     )
     parser.add_argument(
-        "--transcript-file",
-        default=None,
-        help="Optional path to transcript text file (overrides automatic local caption fetch)",
-    )
-    parser.add_argument(
         "--mode",
         choices=["api", "direct"],
         default="api",
@@ -113,16 +108,6 @@ def _resolve_stack_output(*, region: str, stack_name: str, output_key: str) -> s
     )
 
 
-def _read_transcript_file(path: str | None) -> str | None:
-    if not path:
-        return None
-    with open(path, "r", encoding="utf-8") as file_obj:
-        text = file_obj.read().strip()
-    if not text:
-        raise RuntimeError(f"Transcript file is empty: {path}")
-    return text
-
-
 def _read_source_file_payload(path: str | None) -> tuple[str, str] | None:
     if not path:
         return None
@@ -148,13 +133,9 @@ def _resolve_source_input(
     return source, None
 
 
-def _resolve_source_text(*, source_url: str | None, transcript_file: str | None) -> str | None:
+def _resolve_source_text(*, source_url: str | None) -> str | None:
     if not source_url:
         return None
-
-    file_text = _read_transcript_file(transcript_file)
-    if file_text is not None:
-        return file_text
 
     if not is_youtube_url(source_url):
         return None
@@ -166,8 +147,7 @@ def _resolve_source_text(*, source_url: str | None, transcript_file: str | None)
         raise RuntimeError(
             "Could not fetch YouTube captions locally. The video may not have captions, "
             "captions may be disabled/restricted, or YouTube may be rate-limiting/blocking "
-            "your network. Retry later or provide a local transcript with "
-            "`--transcript-file <path>`.\n"
+            "your network. Retry later or try again from a different local network.\n"
             f"Details: {exc}"
         ) from exc
 
@@ -236,12 +216,7 @@ def main() -> None:
             source=args.source,
             source_file=args.source_file,
         )
-        if source_file_payload and args.transcript_file:
-            raise RuntimeError("--transcript-file can only be used with a source URL.")
-        source_text = _resolve_source_text(
-            source_url=source_url,
-            transcript_file=args.transcript_file,
-        )
+        source_text = _resolve_source_text(source_url=source_url)
         source_file_name = source_file_payload[0] if source_file_payload else None
         source_file_base64 = source_file_payload[1] if source_file_payload else None
         if args.mode == "api":

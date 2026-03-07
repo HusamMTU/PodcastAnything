@@ -129,14 +129,12 @@ class FetchArticleHandlerTests(unittest.TestCase):
         mock_is_youtube_url.assert_called_once_with(event["source_url"])
 
     @patch("podcast_anything.handlers.fetch_article.put_text")
-    @patch("podcast_anything.handlers.fetch_article.youtube.fetch_transcript_text")
     @patch("podcast_anything.handlers.fetch_article.article.fetch_html")
     @patch("podcast_anything.handlers.fetch_article.load_settings")
     def test_uses_provided_source_text_and_skips_remote_fetch(
         self,
         mock_settings: Mock,
         mock_fetch_html: Mock,
-        mock_fetch_transcript: Mock,
         mock_put_text: Mock,
     ) -> None:
         mock_settings.return_value = Settings(
@@ -154,7 +152,6 @@ class FetchArticleHandlerTests(unittest.TestCase):
         result = fetch_article.handler(event, None)
 
         mock_fetch_html.assert_not_called()
-        mock_fetch_transcript.assert_not_called()
         mock_put_text.assert_called_once_with(
             "default-bucket",
             "jobs/job-yt-2/source.txt",

@@ -111,16 +111,14 @@ scripts/test.sh
 - `test_read_source_file_payload_encodes_file`: reads a local document and base64-encodes it for API submission.
 - `test_resolve_source_input_requires_exactly_one_source`: enforces that the CLI receives either a URL or `--source-file`, but not both.
 - `test_resolve_source_input_returns_file_payload`: resolves `--source-file` into `(filename, base64)` payload data.
-- `test_ignores_transcript_file_without_source_url`: skips transcript handling entirely when launching from a local document file.
-- `test_returns_none_for_non_youtube_without_transcript_file`: leaves article URLs unchanged when no transcript file is provided.
-- `test_uses_transcript_file_before_youtube_fetch`: prefers `--transcript-file` content over automatic YouTube caption fetch.
+- `test_returns_none_without_source_url`: skips transcript handling entirely when no URL source is provided.
+- `test_returns_none_for_non_youtube_url`: leaves article URLs unchanged and skips local transcript fetch.
 - `test_auto_fetches_youtube_transcript_locally`: auto-fetches captions locally for YouTube URLs before calling AWS.
-- `test_returns_clear_error_when_local_youtube_fetch_fails`: returns an actionable local caption fetch error with `--transcript-file` fallback guidance.
-- `test_main_rejects_transcript_file_with_source_file`: rejects combining `--transcript-file` with `--source-file`.
+- `test_returns_clear_error_when_local_youtube_fetch_fails`: returns an actionable local caption fetch error when captions cannot be fetched.
 
 ## `tests/test_youtube.py`
 
 - `test_detects_supported_youtube_hosts`: detects supported YouTube URL hosts.
 - `test_extracts_video_id_from_common_formats`: extracts video IDs from watch, short, and embed URL formats.
 - `test_raises_when_video_id_cannot_be_extracted`: raises a clear error for malformed YouTube URLs.
-- `test_returns_clean_error_when_youtube_blocks_cloud_ip`: maps cloud-IP transcript block errors to a clearer actionable message.
+- `test_returns_clean_error_when_youtube_blocks_cloud_ip`: maps local-network transcript block errors to a clearer actionable message.

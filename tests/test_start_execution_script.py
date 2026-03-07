@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import base64
 import importlib.util
 import sys
@@ -65,81 +64,43 @@ class SourceInputTests(unittest.TestCase):
 
 
 class ResolveSourceTextTests(unittest.TestCase):
-    @patch("start_execution_script._read_transcript_file")
-    def test_ignores_transcript_file_without_source_url(self, mock_read_file: Mock) -> None:
-        result = start_execution_script._resolve_source_text(
-            source_url=None,
-            transcript_file="transcript.txt",
-        )
+    def test_returns_none_without_source_url(self) -> None:
+        result = start_execution_script._resolve_source_text(source_url=None)
 
         self.assertIsNone(result)
-        mock_read_file.assert_not_called()
 
     @patch("start_execution_script.fetch_transcript_text")
     @patch("start_execution_script.is_youtube_url", return_value=False)
-    @patch("start_execution_script._read_transcript_file", return_value=None)
-    def test_returns_none_for_non_youtube_without_transcript_file(
+    def test_returns_none_for_non_youtube_url(
         self,
-        mock_read_file: Mock,
         mock_is_youtube_url: Mock,
         mock_fetch_transcript: Mock,
     ) -> None:
-        result = start_execution_script._resolve_source_text(
-            source_url="https://example.com/article",
-            transcript_file=None,
-        )
+        result = start_execution_script._resolve_source_text(source_url="https://example.com/article")
 
         self.assertIsNone(result)
-        mock_read_file.assert_called_once_with(None)
         mock_is_youtube_url.assert_called_once_with("https://example.com/article")
-        mock_fetch_transcript.assert_not_called()
-
-    @patch("start_execution_script.fetch_transcript_text")
-    @patch("start_execution_script.is_youtube_url")
-    @patch("start_execution_script._read_transcript_file", return_value="provided transcript")
-    def test_uses_transcript_file_before_youtube_fetch(
-        self,
-        mock_read_file: Mock,
-        mock_is_youtube_url: Mock,
-        mock_fetch_transcript: Mock,
-    ) -> None:
-        result = start_execution_script._resolve_source_text(
-            source_url="https://www.youtube.com/watch?v=abc123XYZ00",
-            transcript_file="transcript.txt",
-        )
-
-        self.assertEqual("provided transcript", result)
-        mock_read_file.assert_called_once_with("transcript.txt")
-        mock_is_youtube_url.assert_not_called()
         mock_fetch_transcript.assert_not_called()
 
     @patch("start_execution_script.fetch_transcript_text", return_value="auto fetched transcript")
     @patch("start_execution_script.is_youtube_url", return_value=True)
-    @patch("start_execution_script._read_transcript_file", return_value=None)
     def test_auto_fetches_youtube_transcript_locally(
         self,
-        mock_read_file: Mock,
         mock_is_youtube_url: Mock,
         mock_fetch_transcript: Mock,
     ) -> None:
         source_url = "https://www.youtube.com/watch?v=abc123XYZ00"
 
-        result = start_execution_script._resolve_source_text(
-            source_url=source_url,
-            transcript_file=None,
-        )
+        result = start_execution_script._resolve_source_text(source_url=source_url)
 
         self.assertEqual("auto fetched transcript", result)
-        mock_read_file.assert_called_once_with(None)
         mock_is_youtube_url.assert_called_once_with(source_url)
         mock_fetch_transcript.assert_called_once_with(source_url)
 
     @patch("start_execution_script.fetch_transcript_text")
     @patch("start_execution_script.is_youtube_url", return_value=True)
-    @patch("start_execution_script._read_transcript_file", return_value=None)
     def test_returns_clear_error_when_local_youtube_fetch_fails(
         self,
-        _mock_read_file: Mock,
         _mock_is_youtube_url: Mock,
         mock_fetch_transcript: Mock,
     ) -> None:
@@ -150,48 +111,11 @@ class ResolveSourceTextTests(unittest.TestCase):
             "Could not fetch YouTube captions locally",
         ) as exc_info:
             start_execution_script._resolve_source_text(
-                source_url="https://www.youtube.com/watch?v=abc123XYZ00",
-                transcript_file=None,
+                source_url="https://www.youtube.com/watch?v=abc123XYZ00"
             )
 
-        self.assertIn("--transcript-file", str(exc_info.exception))
+        self.assertIn("different local network", str(exc_info.exception))
         self.assertIn("captions unavailable", str(exc_info.exception))
-
-
-class MainTests(unittest.TestCase):
-    @patch("start_execution_script._resolve_source_text")
-    @patch(
-        "start_execution_script._resolve_source_input",
-        return_value=(None, ("brief.txt", "aGVsbG8=")),
-    )
-    @patch("start_execution_script._parse_args")
-    def test_main_rejects_transcript_file_with_source_file(
-        self,
-        mock_parse_args: Mock,
-        _mock_resolve_source_input: Mock,
-        mock_resolve_source_text: Mock,
-    ) -> None:
-        mock_parse_args.return_value = argparse.Namespace(
-            source=None,
-            source_file="./brief.txt",
-            style="podcast",
-            script_mode="single",
-            voice_id=None,
-            voice_id_b=None,
-            transcript_file="./transcript.txt",
-            mode="api",
-            region="us-east-1",
-            stack_name="PodcastAnythingStack",
-            api_url="https://example.com",
-            state_machine_arn=None,
-        )
-
-        with self.assertRaisesRegex(
-            SystemExit, "--transcript-file can only be used with a source URL"
-        ):
-            start_execution_script.main()
-
-        mock_resolve_source_text.assert_not_called()
 
 
 if __name__ == "__main__":

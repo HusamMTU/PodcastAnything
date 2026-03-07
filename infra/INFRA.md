@@ -89,7 +89,7 @@ flowchart LR
   end
 
   SE -->|Article URL or uploaded document| APIGW
-  CC -->|source_url + transcript_text| APIGW
+  CC -->|source_url + source_text| APIGW
   U -->|status request| APIGW
   APIGW -->|status response| U
 
@@ -117,6 +117,7 @@ flowchart LR
 
 Execution summary:
 - Input event starts in Step Functions with `job_id` and exactly one of `source_url` or uploaded document payload (`source_file_name` + `source_file_base64`).
+- For YouTube URLs started from the CLI, the request already includes locally fetched captions as `source_text`.
 - Steps run in strict order: `fetch -> rewrite -> generate`.
 - Each step adds new keys to the event payload and passes it to the next step.
 - Final artifacts are stored under `jobs/<job_id>/` in S3.
